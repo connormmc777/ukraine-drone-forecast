@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.Python
+
+# Virtual environments
+drone_app/venv/
+venv/
+env/
+.venv/
+
+# Local data files that contain credentials, ephemeral state, or are too
+# large for GitHub (>100 MB)
+drone_app/data/.acled_creds.json
+drone_app/data/.tg_sync_log.json
+drone_app/data/.acled_sync_log.json
+drone_app/data/forecast_history.db
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Logs
+/tmp/streamlit.log
+*.log

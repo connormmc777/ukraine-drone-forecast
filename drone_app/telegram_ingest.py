@@ -484,6 +484,19 @@ def sync(observations_csv, daily_totals_csv=None, pages: int = 12) -> dict:
     if daily_totals_csv and summaries:
         summary_added, summary_updated = upsert_daily_totals(summaries, daily_totals_csv)
 
+    # Update the launch-site forensics log (silent-launcher detection)
+    ls_added = ls_updated = 0
+    try:
+        import launch_site_tracker as _lst
+        from pathlib import Path as _Path
+        _ls_csv = _Path(daily_totals_csv).parent / 'launch_site_log.csv' if daily_totals_csv else None
+        if _ls_csv is not None:
+            ls_df = _lst.parse_messages_for_sites(messages)
+            if not ls_df.empty:
+                ls_added, ls_updated = _lst.upsert_launch_site_log(ls_df, _ls_csv)
+    except Exception:
+        pass  # never fail the main sync if launch-site tracking has an issue
+
     return {
         'messages_seen': len(messages),
         'drone_messages': int(sum(1 for m in messages if is_drone_message(m['text']))),
@@ -492,6 +505,8 @@ def sync(observations_csv, daily_totals_csv=None, pages: int = 12) -> dict:
         'summaries_parsed': len(summaries),
         'summary_rows_added': summary_added,
         'summary_rows_updated': summary_updated,
+        'launch_site_rows_added': ls_added,
+        'launch_site_rows_updated': ls_updated,
         'unmatched_messages': unmatched[:8],  # cap UI clutter
         'date_range': (
             messages[0]['datetime'].date().isoformat() if messages else None,

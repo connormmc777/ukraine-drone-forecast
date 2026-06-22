@@ -1,0 +1,65 @@
+{
+  "week_start": "2026-04-20",
+  "closed_at": "2026-06-22T14:16:34",
+  "snapshot_id": null,
+  "predicted_total": 0,
+  "actual_total": 763,
+  "total_error": -763,
+  "pct_off": -100.0,
+  "spatial_r": null,
+  "mae_per_oblast": null,
+  "is_data_gap": false,
+  "per_oblast_actual": {},
+  "daily_progression": [
+    {
+      "observation_date": "2026-04-20",
+      "day_of_week": 0,
+      "daily_launched": 142,
+      "daily_intercepted": 113,
+      "daily_hits": 28,
+      "cumulative_launched": 142,
+      "cumulative_intercepted": 113,
+      "cumulative_hits": 28
+    },
+    {
+      "observation_date": "2026-04-22",
+      "day_of_week": 2,
+      "daily_launched": 215,
+      "daily_intercepted": 189,
+      "daily_hits": 24,
+      "cumulative_launched": 357,
+      "cumulative_intercepted": 302,
+      "cumulative_hits": 52
+    },
+    {
+      "observation_date": "2026-04-23",
+      "day_of_week": 3,
+      "daily_launched": 155,
+      "daily_intercepted": 139,
+      "daily_hits": 11,
+      "cumulative_launched": 512,
+      "cumulative_intercepted": 441,
+      "cumulative_hits": 63
+    },
+    {
+      "observation_date": "2026-04-24",
+      "day_of_week": 4,
+      "daily_launched": 107,
+      "daily_intercepted": 96,
+      "daily_hits": 0,
+      "cumulative_launched": 619,
+      "cumulative_intercepted": 537,
+      "cumulative_hits": 63
+    },
+    {
+      "observation_date": "2026-04-26",
+      "day_of_week": 6,
+      "daily_launched": 144,
+      "daily_intercepted": 124,
+      "daily_hits": 19,
+      "cumulative_launched": 763,
+      "cumulative_intercepted": 661,
+      "cumulative_hits": 82
+    }
+  ]
+}

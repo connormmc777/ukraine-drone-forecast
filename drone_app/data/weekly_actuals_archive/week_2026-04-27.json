@@ -1,0 +1,85 @@
+{
+  "week_start": "2026-04-27",
+  "closed_at": "2026-06-22T14:16:34",
+  "snapshot_id": null,
+  "predicted_total": 0,
+  "actual_total": 2105,
+  "total_error": -2105,
+  "pct_off": -100.0,
+  "spatial_r": null,
+  "mae_per_oblast": null,
+  "is_data_gap": false,
+  "per_oblast_actual": {},
+  "daily_progression": [
+    {
+      "observation_date": "2026-04-27",
+      "day_of_week": 0,
+      "daily_launched": 94,
+      "daily_intercepted": 74,
+      "daily_hits": 20,
+      "cumulative_launched": 94,
+      "cumulative_intercepted": 74,
+      "cumulative_hits": 20
+    },
+    {
+      "observation_date": "2026-04-28",
+      "day_of_week": 1,
+      "daily_launched": 123,
+      "daily_intercepted": 95,
+      "daily_hits": 19,
+      "cumulative_launched": 217,
+      "cumulative_intercepted": 169,
+      "cumulative_hits": 39
+    },
+    {
+      "observation_date": "2026-04-29",
+      "day_of_week": 2,
+      "daily_launched": 171,
+      "daily_intercepted": 154,
+      "daily_hits": 12,
+      "cumulative_launched": 388,
+      "cumulative_intercepted": 323,
+      "cumulative_hits": 51
+    },
+    {
+      "observation_date": "2026-04-30",
+      "day_of_week": 3,
+      "daily_launched": 206,
+      "daily_intercepted": 172,
+      "daily_hits": 32,
+      "cumulative_launched": 594,
+      "cumulative_intercepted": 495,
+      "cumulative_hits": 83
+    },
+    {
+      "observation_date": "2026-05-01",
+      "day_of_week": 4,
+      "daily_launched": 619,
+      "daily_intercepted": 578,
+      "daily_hits": 36,
+      "cumulative_launched": 1213,
+      "cumulative_intercepted": 1073,
+      "cumulative_hits": 119
+    },
+    {
+      "observation_date": "2026-05-02",
+      "day_of_week": 5,
+      "daily_launched": 390,
+      "daily_intercepted": 362,
+      "daily_hits": 24,
+      "cumulative_launched": 1603,
+      "cumulative_intercepted": 1435,
+      "cumulative_hits": 143
+    },
+    {
+      "observation_date": "2026-05-03",
+      "day_of_week": 6,
+      "daily_launched": 502,
+      "daily_intercepted": 424,
+      "daily_hits": 19,
+      "cumulative_launched": 2105,
+      "cumulative_intercepted": 1859,
+      "cumulative_hits": 162
+    }
+  ]
+}

@@ -497,6 +497,28 @@ def sync(observations_csv, daily_totals_csv=None, pages: int = 12) -> dict:
     except Exception:
         pass  # never fail the main sync if launch-site tracking has an issue
 
+    # Update the weekly actuals ledger (current week's cumulative row)
+    weekly_update = {}
+    try:
+        import weekly_tracker as _wt
+        from pathlib import Path as _Path
+        if daily_totals_csv:
+            _db = _Path(daily_totals_csv).parent.parent / 'data' / 'forecast_history.db'
+            if not _db.exists():
+                _db = _Path(daily_totals_csv).parent / 'forecast_history.db'
+            if _db.exists():
+                _wt.init_tables(_db)
+                daily_df = pd.read_csv(daily_totals_csv) if _Path(daily_totals_csv).exists() else pd.DataFrame()
+                obs_df = pd.read_csv(observations_csv) if _Path(observations_csv).exists() else pd.DataFrame()
+                if not daily_df.empty:
+                    weekly_update = _wt.update_today_actual(daily_df, obs_df, _db)
+                # Auto-close any past weeks that haven't been frozen
+                closed = _wt.auto_close_pending_weeks(_db, _Path(daily_totals_csv).parent)
+                if closed:
+                    weekly_update['auto_closed_weeks'] = [c['week_start'] for c in closed]
+    except Exception as _e:
+        weekly_update = {'error': f'{type(_e).__name__}: {_e}'}
+
     return {
         'messages_seen': len(messages),
         'drone_messages': int(sum(1 for m in messages if is_drone_message(m['text']))),
@@ -507,6 +529,7 @@ def sync(observations_csv, daily_totals_csv=None, pages: int = 12) -> dict:
         'summary_rows_updated': summary_updated,
         'launch_site_rows_added': ls_added,
         'launch_site_rows_updated': ls_updated,
+        'weekly_ledger_update': weekly_update,
         'unmatched_messages': unmatched[:8],  # cap UI clutter
         'date_range': (
             messages[0]['datetime'].date().isoformat() if messages else None,

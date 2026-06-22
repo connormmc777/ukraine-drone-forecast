@@ -1,0 +1,11 @@
+{
+  "week_start": "2026-06-08",
+  "closed_at": "2026-06-22T14:16:35",
+  "snapshot_id": 7,
+  "predicted_total": 2170,
+  "actual_total": null,
+  "is_data_gap": true,
+  "reason": "No observations captured during this week. Telegram channel preview rotated past these dates before a sync ran. Backfill via Telethon if needed.",
+  "per_oblast_actual": null,
+  "daily_progression": []
+}

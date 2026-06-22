@@ -1,0 +1,94 @@
+{
+  "week_start": "2026-05-25",
+  "closed_at": "2026-06-22T14:16:35",
+  "snapshot_id": 5,
+  "predicted_total": 2065,
+  "actual_total": 1323,
+  "total_error": 742,
+  "pct_off": 56.08465608465608,
+  "spatial_r": 0.8746202735324922,
+  "mae_per_oblast": 63.083333333333336,
+  "is_data_gap": false,
+  "per_oblast_actual": {
+    "Chernihiv": 100,
+    "Dnipropetrovsk": 57,
+    "Donetsk": 10,
+    "Kharkiv": 80,
+    "Kherson": 13,
+    "Kyiv City": 1,
+    "Kyiv Oblast": 37,
+    "Mykolaiv": 21,
+    "Odesa": 39,
+    "Poltava": 37,
+    "Sumy": 81,
+    "Zaporizhzhia": 29,
+    "Zhytomyr": 28,
+    "Lviv": 1,
+    "Rivne": 15,
+    "Cherkasy": 1,
+    "Volyn": 1,
+    "Kirovohrad": 1
+  },
+  "daily_progression": [
+    {
+      "observation_date": "2026-05-25",
+      "day_of_week": 0,
+      "daily_launched": 262,
+      "daily_intercepted": 246,
+      "daily_hits": 10,
+      "cumulative_launched": 262,
+      "cumulative_intercepted": 246,
+      "cumulative_hits": 10
+    },
+    {
+      "observation_date": "2026-05-27",
+      "day_of_week": 2,
+      "daily_launched": 163,
+      "daily_intercepted": 150,
+      "daily_hits": 8,
+      "cumulative_launched": 425,
+      "cumulative_intercepted": 396,
+      "cumulative_hits": 18
+    },
+    {
+      "observation_date": "2026-05-28",
+      "day_of_week": 3,
+      "daily_launched": 147,
+      "daily_intercepted": 138,
+      "daily_hits": 0,
+      "cumulative_launched": 572,
+      "cumulative_intercepted": 534,
+      "cumulative_hits": 18
+    },
+    {
+      "observation_date": "2026-05-29",
+      "day_of_week": 4,
+      "daily_launched": 232,
+      "daily_intercepted": 217,
+      "daily_hits": 14,
+      "cumulative_launched": 804,
+      "cumulative_intercepted": 751,
+      "cumulative_hits": 32
+    },
+    {
+      "observation_date": "2026-05-30",
+      "day_of_week": 5,
+      "daily_launched": 290,
+      "daily_intercepted": 284,
+      "daily_hits": 9,
+      "cumulative_launched": 1094,
+      "cumulative_intercepted": 1035,
+      "cumulative_hits": 41
+    },
+    {
+      "observation_date": "2026-05-31",
+      "day_of_week": 6,
+      "daily_launched": 229,
+      "daily_intercepted": 212,
+      "daily_hits": 14,
+      "cumulative_launched": 1323,
+      "cumulative_intercepted": 1247,
+      "cumulative_hits": 55
+    }
+  ]
+}

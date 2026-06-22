@@ -1,0 +1,25 @@
+{
+  "week_start": "2026-04-13",
+  "closed_at": "2026-06-22T14:16:34",
+  "snapshot_id": null,
+  "predicted_total": 0,
+  "actual_total": 236,
+  "total_error": -236,
+  "pct_off": -100.0,
+  "spatial_r": null,
+  "mae_per_oblast": null,
+  "is_data_gap": false,
+  "per_oblast_actual": {},
+  "daily_progression": [
+    {
+      "observation_date": "2026-04-19",
+      "day_of_week": 6,
+      "daily_launched": 236,
+      "daily_intercepted": 203,
+      "daily_hits": 32,
+      "cumulative_launched": 236,
+      "cumulative_intercepted": 203,
+      "cumulative_hits": 32
+    }
+  ]
+}

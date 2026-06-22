@@ -1402,6 +1402,143 @@ if not daily_totals.empty:
     st.divider()
 
 
+# ============== WEEKLY LEDGER (PERMANENT PREDICTED VS ACTUAL) ==============
+# This panel is the ground truth: every week has a locked prediction,
+# a day-by-day growing actual, and a final closed score. Data gaps are
+# explicitly marked, not silently treated as zero.
+try:
+    import weekly_tracker as _wt
+    import importlib as _il
+    _il.reload(_wt)
+    _wt.init_tables(DB_PATH)
+    scores_df = _wt.get_all_closed_weeks(DB_PATH)
+    if not scores_df.empty:
+        with st.container():
+            st.markdown("### 📒 Weekly ledger — predicted vs actual, immutable history")
+            st.caption(
+                "Each closed week is permanently recorded with its locked "
+                "prediction, final actual, and per-oblast breakdown. Data "
+                "gaps (weeks where the Telegram channel rotated past unsynced "
+                "days) are explicitly flagged — the actual never silently "
+                "shows as zero. Every closed week has a JSON archive at "
+                "data/weekly_actuals_archive/. The PREDICTION is locked at "
+                "week-start and never changes; the ACTUAL grows day-by-day "
+                "until Sunday EOD, then is frozen."
+            )
+
+            n_scored = (scores_df['is_data_gap'] == 0).sum()
+            n_gap = (scores_df['is_data_gap'] == 1).sum()
+            wcol1, wcol2, wcol3, wcol4 = st.columns(4)
+            with wcol1:
+                st.metric("Weeks closed", len(scores_df))
+            with wcol2:
+                st.metric("Scored", int(n_scored))
+            with wcol3:
+                st.metric("Data gaps", int(n_gap),
+                           help="Snapshot exists but no actuals captured.")
+            with wcol4:
+                with_pct = scores_df[scores_df['pct_off'].notna() & (scores_df['predicted_total']>0)]
+                avg_abs_err = with_pct['pct_off'].abs().mean() if not with_pct.empty else 0
+                st.metric("Avg |% off|", f"{avg_abs_err:.1f}%")
+
+            # Build display table
+            display = scores_df.copy()
+            display['week_start'] = pd.to_datetime(display['week_start']).dt.date
+            display['status'] = display['is_data_gap'].map(
+                {1: '⚠️ DATA GAP', 0: '✓ scored'})
+            display['actual_str'] = display.apply(
+                lambda r: 'UNKNOWN' if r['is_data_gap']
+                else f"{int(r['actual_total']):,}", axis=1)
+            display['predicted_str'] = display['predicted_total'].apply(
+                lambda v: f"{int(v):,}" if v > 0 else '—')
+            display['err_str'] = display.apply(
+                lambda r: '—' if r['is_data_gap'] or r['predicted_total']==0
+                else f"{int(r['total_error']):+,}", axis=1)
+            display['pct_str'] = display['pct_off'].apply(
+                lambda v: f"{v:+.1f}%" if pd.notna(v) else '—')
+            display['r_str'] = display['spatial_r'].apply(
+                lambda v: f"{v:.3f}" if pd.notna(v) else '—')
+            view = display[['week_start','status','predicted_str','actual_str',
+                            'err_str','pct_str','r_str']].copy()
+            view.columns = ['Week start','Status','Predicted','Actual',
+                            'Error','% off','Spatial r']
+            st.dataframe(view, use_container_width=True, hide_index=True)
+
+            # Predicted-vs-actual chart over time
+            scored_only = scores_df[(scores_df['is_data_gap']==0) &
+                                     (scores_df['predicted_total']>0)].copy()
+            if not scored_only.empty:
+                scored_only['week_start'] = pd.to_datetime(scored_only['week_start'])
+                scored_only = scored_only.sort_values('week_start')
+                fig_l, ax_l = plt.subplots(figsize=(11, 4))
+                x = scored_only['week_start']
+                ax_l.bar([d - pd.Timedelta(days=1) for d in x],
+                         scored_only['predicted_total'], width=2.5,
+                         color='#003d7a', alpha=0.75, label='Predicted')
+                ax_l.bar([d + pd.Timedelta(days=1) for d in x],
+                         scored_only['actual_total'], width=2.5,
+                         color='#cc0033', alpha=0.85, label='Actual')
+                # Annotate data-gap weeks
+                gaps = scores_df[scores_df['is_data_gap']==1]
+                for _, gr in gaps.iterrows():
+                    ax_l.axvline(pd.to_datetime(gr['week_start']),
+                                  color='gray', linestyle='--', alpha=0.5)
+                    ax_l.text(pd.to_datetime(gr['week_start']),
+                               scored_only['predicted_total'].max()*0.95,
+                               'GAP', ha='center', fontsize=8, color='gray')
+                ax_l.set_title('Weekly predicted vs actual — immutable scored history')
+                ax_l.legend(loc='upper left')
+                ax_l.grid(alpha=0.3, axis='y')
+                ax_l.tick_params(axis='x', rotation=25)
+                st.pyplot(fig_l)
+
+            # Current week's growth (this week, in progress)
+            today_dt = date.today()
+            cur_ws = _wt.week_start_of(today_dt)
+            cur_progress = _wt.get_week_progress(cur_ws, DB_PATH)
+            if not cur_progress.empty:
+                with st.expander(f"📈 Current-week progress (week of {cur_ws} — growing live)"):
+                    cp = cur_progress[['observation_date','day_of_week',
+                                        'daily_launched','daily_intercepted',
+                                        'daily_hits','cumulative_launched',
+                                        'cumulative_intercepted','cumulative_hits',
+                                        'is_frozen']].copy()
+                    day_names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+                    cp['day'] = cp['day_of_week'].map(lambda i: day_names[i])
+                    cp.columns = ['Date','dow_n','Daily launched','Daily intercepted',
+                                  'Daily hits','Cumulative launched',
+                                  'Cumulative intercepted','Cumulative hits',
+                                  'Frozen','Day']
+                    st.dataframe(cp[['Day','Date','Daily launched','Daily intercepted',
+                                      'Daily hits','Cumulative launched',
+                                      'Cumulative intercepted','Cumulative hits',
+                                      'Frozen']],
+                                  use_container_width=True, hide_index=True)
+                    st.caption(
+                        f"This week's cumulative total so far: "
+                        f"**{int(cur_progress['cumulative_launched'].iloc[-1]):,}** drones. "
+                        f"Rows refresh on every sync until Sunday EOD, then freeze."
+                    )
+
+            with st.expander("📂 JSON archives (defense-in-depth)"):
+                import os
+                archive_dir = DATA_DIR / 'weekly_actuals_archive'
+                if archive_dir.exists():
+                    files = sorted(os.listdir(archive_dir))
+                    st.markdown(
+                        "Each closed week is persisted as a standalone JSON "
+                        "file. Survives database corruption / accidental "
+                        "wipes. Files:"
+                    )
+                    for f in files:
+                        sz = os.path.getsize(archive_dir / f)
+                        st.code(f"  data/weekly_actuals_archive/{f}  ({sz:,} bytes)",
+                                 language=None)
+    st.divider()
+except Exception as _wt_e:
+    st.warning(f"Weekly ledger unavailable: {_wt_e}")
+
+
 # ============== STRATEGIC EXCHANGE (BOTH DIRECTIONS) ==============
 # Two-way cost accounting: who's actually winning on dollars,
 # and does Ukraine's refinery campaign change the math.

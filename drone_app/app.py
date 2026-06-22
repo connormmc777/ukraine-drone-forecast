@@ -275,7 +275,12 @@ def delete_snapshot(snap_id):
 
 def score_snapshots(observations_df):
     """Join every snapshot's per-oblast prediction against the observations
-    log aggregated over that snapshot's week. Returns one row per snapshot."""
+    log aggregated over that snapshot's week. Returns one row per snapshot.
+
+    Marks data_gap=True for weeks where NO observations exist at all —
+    distinguishing 'Russia genuinely launched zero' from 'we don't have data
+    for that week'. Critical: never report observed_total=0 as a real
+    measurement when it's actually a data gap."""
     snaps = list_snapshots()
     if snaps.empty:
         return pd.DataFrame(), pd.DataFrame()
@@ -290,6 +295,7 @@ def score_snapshots(observations_df):
         we = ws + timedelta(days=7)
         week_obs = obs[(obs['observation_date'] >= ws) &
                        (obs['observation_date'] < we)]
+        data_gap = week_obs.empty
         observed_by_oblast = (
             week_obs.groupby('oblast')['observed_drones'].sum().reset_index()
         )
@@ -324,13 +330,17 @@ def score_snapshots(observations_df):
             'created_at': s['created_at'],
             'week_start': s['week_start'],
             'predicted_total': int(round(predicted_total)),
-            'observed_total': int(round(observed_total)),
-            'total_error': int(round(predicted_total - observed_total)),
-            'mae_per_oblast': round(mae, 2),
+            'observed_total': (None if data_gap else int(round(observed_total))),
+            'total_error': (None if data_gap
+                            else int(round(predicted_total - observed_total))),
+            'mae_per_oblast': (None if data_gap else round(mae, 2)),
             'pearson_r': round(pearson, 3) if pd.notna(pearson) else None,
             'share_pearson_r': round(share_pearson, 3)
                 if pd.notna(share_pearson) else None,
             'alpha': round(float(s['learning_alpha']), 3),
+            'data_gap': data_gap,
+            'status': ('DATA GAP — actual unknown' if data_gap
+                       else 'scored'),
             'note': s['note'] or '',
         })
         merged['snapshot_id'] = int(s['id'])

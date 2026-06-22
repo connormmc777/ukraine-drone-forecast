@@ -1,0 +1,206 @@
+{
+  "id": 6,
+  "created_at": "2026-06-16T15:14:40",
+  "week_start": "2026-06-01",
+  "russian_daily_capacity": 310,
+  "tempo_factor": 1.0,
+  "weekly_budget": 2170,
+  "remaining_budget": 2170,
+  "low_tempo": 0,
+  "learning_alpha": 0.9809087437953418,
+  "note": "Auto-lock: data-driven 310/d \u00d7 7 \u00d7 1.0 = 2170",
+  "per_oblast": [
+    {
+      "snapshot_id": 6,
+      "oblast": "Chernihiv",
+      "prior_share": 0.048570889332120115,
+      "obs_share": 0.1337744907227196,
+      "learned_share": 0.1321478469390121,
+      "predicted_week": 287.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Sumy",
+      "prior_share": 0.049408548187131224,
+      "obs_share": 0.11794472557415336,
+      "learned_share": 0.11663628385236982,
+      "predicted_week": 253.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Dnipropetrovsk",
+      "prior_share": 0.07439150413518478,
+      "obs_share": 0.11015959517321915,
+      "learned_share": 0.10947673738326048,
+      "predicted_week": 238.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Kharkiv",
+      "prior_share": 0.07254511655044289,
+      "obs_share": 0.1012066952121448,
+      "learned_share": 0.1006595096706843,
+      "predicted_week": 218.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Poltava",
+      "prior_share": 0.05622136890557749,
+      "obs_share": 0.07759179966264435,
+      "learned_share": 0.07718381129385728,
+      "predicted_week": 167.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Kyiv Oblast",
+      "prior_share": 0.05383316300016722,
+      "obs_share": 0.07460749967561957,
+      "learned_share": 0.07421089149166667,
+      "predicted_week": 161.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Odesa",
+      "prior_share": 0.05758599931813709,
+      "obs_share": 0.06552484754119632,
+      "learned_share": 0.06537328495580001,
+      "predicted_week": 142.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Mykolaiv",
+      "prior_share": 0.050653933080418254,
+      "obs_share": 0.06448683015440508,
+      "learned_share": 0.06422274277231294,
+      "predicted_week": 139.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Zaporizhzhia",
+      "prior_share": 0.06123031872114275,
+      "obs_share": 0.05229012585960815,
+      "learned_share": 0.05246080537204676,
+      "predicted_week": 114.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Zhytomyr",
+      "prior_share": 0.03532239888188683,
+      "obs_share": 0.04307772155183599,
+      "learned_share": 0.0429296626997942,
+      "predicted_week": 93.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Kherson",
+      "prior_share": 0.04291795837179785,
+      "obs_share": 0.028934734656805502,
+      "learned_share": 0.029201691963315474,
+      "predicted_week": 63.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Kyiv City",
+      "prior_share": 0.07502049829320594,
+      "obs_share": 0.0216686129492669,
+      "learned_share": 0.02268716746136959,
+      "predicted_week": 49.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Vinnytsia",
+      "prior_share": 0.04126247441532151,
+      "obs_share": 0.01946282600233554,
+      "learned_share": 0.019879008675359324,
+      "predicted_week": 43.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Cherkasy",
+      "prior_share": 0.04455397638450347,
+      "obs_share": 0.018165304268846504,
+      "learned_share": 0.018669097169107234,
+      "predicted_week": 41.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Rivne",
+      "prior_share": 0.04312972339594698,
+      "obs_share": 0.018295056442195406,
+      "learned_share": 0.018769181431766837,
+      "predicted_week": 41.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Donetsk",
+      "prior_share": 0.062391639146270446,
+      "obs_share": 0.012326456468145841,
+      "learned_share": 0.013282263697586935,
+      "predicted_week": 29.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Kirovohrad",
+      "prior_share": 0.03768970307554072,
+      "obs_share": 0.012715712988192553,
+      "learned_share": 0.013192497831402712,
+      "predicted_week": 29.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Khmelnytskyi",
+      "prior_share": 0.03286283348078553,
+      "obs_share": 0.010639678214610095,
+      "learned_share": 0.01106394616547255,
+      "predicted_week": 24.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Volyn",
+      "prior_share": 0.009710139162705475,
+      "obs_share": 0.00687686518749189,
+      "learned_share": 0.006930955946850684,
+      "predicted_week": 15.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Chernivtsi",
+      "prior_share": 0.007287454465424504,
+      "obs_share": 0.004022317373816011,
+      "learned_share": 0.004084652942575242,
+      "predicted_week": 9.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Ternopil",
+      "prior_share": 0.00988476320961632,
+      "obs_share": 0.0020760347735824577,
+      "learned_share": 0.0022251132087873805,
+      "predicted_week": 5.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Lviv",
+      "prior_share": 0.016365066103251388,
+      "obs_share": 0.0014272739068379395,
+      "learned_share": 0.0017124551247916131,
+      "predicted_week": 4.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Ivano-Frankivsk",
+      "prior_share": 0.009904573577168795,
+      "obs_share": 0.001557026080186843,
+      "learned_share": 0.001716391248132279,
+      "predicted_week": 4.0
+    },
+    {
+      "snapshot_id": 6,
+      "oblast": "Zakarpattia",
+      "prior_share": 0.007255956806252384,
+      "obs_share": 0.0011677695601401323,
+      "learned_share": 0.001284000702677594,
+      "predicted_week": 3.0
+    }
+  ]
+}

@@ -447,16 +447,99 @@ observation_date,oblast,observed_drones,source
 2026-06-07,Sumy,1,UA Air Force TG
 2026-06-07,Zaporizhzhia,1,UA Air Force TG
 2026-06-07,Zhytomyr,1,UA Air Force TG
-2026-06-15,Chernihiv,3,UA Air Force TG
+2026-06-08,Chernihiv,8,UA Air Force TG
+2026-06-08,Dnipropetrovsk,14,UA Air Force TG
+2026-06-08,Kharkiv,16,UA Air Force TG
+2026-06-08,Kherson,6,UA Air Force TG
+2026-06-08,Kyiv Oblast,6,UA Air Force TG
+2026-06-08,Mykolaiv,8,UA Air Force TG
+2026-06-08,Odesa,11,UA Air Force TG
+2026-06-08,Poltava,2,UA Air Force TG
+2026-06-08,Rivne,6,UA Air Force TG
+2026-06-08,Sumy,18,UA Air Force TG
+2026-06-08,Volyn,2,UA Air Force TG
+2026-06-08,Zaporizhzhia,10,UA Air Force TG
+2026-06-08,Zhytomyr,5,UA Air Force TG
+2026-06-09,Chernihiv,14,UA Air Force TG
+2026-06-09,Dnipropetrovsk,8,UA Air Force TG
+2026-06-09,Donetsk,3,UA Air Force TG
+2026-06-09,Kharkiv,22,UA Air Force TG
+2026-06-09,Kherson,2,UA Air Force TG
+2026-06-09,Kirovohrad,1,UA Air Force TG
+2026-06-09,Kyiv Oblast,3,UA Air Force TG
+2026-06-09,Mykolaiv,4,UA Air Force TG
+2026-06-09,Odesa,8,UA Air Force TG
+2026-06-09,Poltava,3,UA Air Force TG
+2026-06-09,Rivne,2,UA Air Force TG
+2026-06-09,Sumy,20,UA Air Force TG
+2026-06-09,Volyn,1,UA Air Force TG
+2026-06-09,Zaporizhzhia,9,UA Air Force TG
+2026-06-10,Chernihiv,9,UA Air Force TG
+2026-06-10,Dnipropetrovsk,15,UA Air Force TG
+2026-06-10,Kharkiv,24,UA Air Force TG
+2026-06-10,Kherson,7,UA Air Force TG
+2026-06-10,Kyiv Oblast,2,UA Air Force TG
+2026-06-10,Mykolaiv,3,UA Air Force TG
+2026-06-10,Odesa,7,UA Air Force TG
+2026-06-10,Poltava,5,UA Air Force TG
+2026-06-10,Sumy,21,UA Air Force TG
+2026-06-10,Zaporizhzhia,15,UA Air Force TG
+2026-06-11,Chernihiv,7,UA Air Force TG
+2026-06-11,Dnipropetrovsk,10,UA Air Force TG
+2026-06-11,Kharkiv,11,UA Air Force TG
+2026-06-11,Mykolaiv,3,UA Air Force TG
+2026-06-11,Odesa,9,UA Air Force TG
+2026-06-11,Poltava,6,UA Air Force TG
+2026-06-11,Sumy,23,UA Air Force TG
+2026-06-11,Zaporizhzhia,7,UA Air Force TG
+2026-06-12,Chernihiv,10,UA Air Force TG
+2026-06-12,Dnipropetrovsk,9,UA Air Force TG
+2026-06-12,Donetsk,1,UA Air Force TG
+2026-06-12,Kharkiv,6,UA Air Force TG
+2026-06-12,Kyiv Oblast,1,UA Air Force TG
+2026-06-12,Mykolaiv,6,UA Air Force TG
+2026-06-12,Odesa,4,UA Air Force TG
+2026-06-12,Poltava,3,UA Air Force TG
+2026-06-12,Sumy,14,UA Air Force TG
+2026-06-12,Zaporizhzhia,10,UA Air Force TG
+2026-06-13,Chernihiv,15,UA Air Force TG
+2026-06-13,Dnipropetrovsk,16,UA Air Force TG
+2026-06-13,Kharkiv,8,UA Air Force TG
+2026-06-13,Kherson,2,UA Air Force TG
+2026-06-13,Kyiv Oblast,14,UA Air Force TG
+2026-06-13,Mykolaiv,3,UA Air Force TG
+2026-06-13,Odesa,3,UA Air Force TG
+2026-06-13,Poltava,4,UA Air Force TG
+2026-06-13,Sumy,4,UA Air Force TG
+2026-06-13,Zaporizhzhia,9,UA Air Force TG
+2026-06-13,Zhytomyr,3,UA Air Force TG
+2026-06-14,Chernihiv,14,UA Air Force TG
+2026-06-14,Dnipropetrovsk,15,UA Air Force TG
+2026-06-14,Donetsk,1,UA Air Force TG
+2026-06-14,Kharkiv,21,UA Air Force TG
+2026-06-14,Kherson,3,UA Air Force TG
+2026-06-14,Kyiv Oblast,2,UA Air Force TG
+2026-06-14,Mykolaiv,5,UA Air Force TG
+2026-06-14,Odesa,11,UA Air Force TG
+2026-06-14,Poltava,8,UA Air Force TG
+2026-06-14,Sumy,24,UA Air Force TG
+2026-06-14,Zaporizhzhia,10,UA Air Force TG
+2026-06-14,Zhytomyr,1,UA Air Force TG
+2026-06-15,Cherkasy,2,UA Air Force TG
+2026-06-15,Chernihiv,12,UA Air Force TG
 2026-06-15,Dnipropetrovsk,9,UA Air Force TG
 2026-06-15,Donetsk,1,UA Air Force TG
-2026-06-15,Kharkiv,2,UA Air Force TG
+2026-06-15,Kharkiv,6,UA Air Force TG
+2026-06-15,Kherson,5,UA Air Force TG
+2026-06-15,Kirovohrad,5,UA Air Force TG
 2026-06-15,Kyiv City,4,UA Air Force TG
 2026-06-15,Kyiv Oblast,5,UA Air Force TG
-2026-06-15,Mykolaiv,1,UA Air Force TG
+2026-06-15,Mykolaiv,9,UA Air Force TG
 2026-06-15,Odesa,4,UA Air Force TG
-2026-06-15,Sumy,5,UA Air Force TG
+2026-06-15,Poltava,3,UA Air Force TG
+2026-06-15,Sumy,8,UA Air Force TG
 2026-06-15,Zaporizhzhia,4,UA Air Force TG
+2026-06-15,Zhytomyr,1,UA Air Force TG
 2026-06-16,Chernihiv,8,UA Air Force TG
 2026-06-16,Dnipropetrovsk,10,UA Air Force TG
 2026-06-16,Donetsk,1,UA Air Force TG
@@ -502,15 +585,15 @@ observation_date,oblast,observed_drones,source
 2026-06-19,Sumy,14,UA Air Force TG
 2026-06-19,Zaporizhzhia,2,UA Air Force TG
 2026-06-20,Cherkasy,2,UA Air Force TG
-2026-06-20,Chernihiv,12,UA Air Force TG
+2026-06-20,Chernihiv,11,UA Air Force TG
 2026-06-20,Dnipropetrovsk,15,UA Air Force TG
 2026-06-20,Donetsk,1,UA Air Force TG
-2026-06-20,Kharkiv,16,UA Air Force TG
+2026-06-20,Kharkiv,15,UA Air Force TG
 2026-06-20,Kherson,2,UA Air Force TG
 2026-06-20,Kirovohrad,2,UA Air Force TG
 2026-06-20,Kyiv City,2,UA Air Force TG
 2026-06-20,Kyiv Oblast,9,UA Air Force TG
-2026-06-20,Mykolaiv,3,UA Air Force TG
+2026-06-20,Mykolaiv,2,UA Air Force TG
 2026-06-20,Odesa,1,UA Air Force TG
 2026-06-20,Poltava,11,UA Air Force TG
 2026-06-20,Sumy,17,UA Air Force TG

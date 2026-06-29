@@ -202,5 +202,8 @@
       "learned_share": 0.007001844006885869,
       "predicted_week": 26.0
     }
-  ]
+  ],
+  "prediction_hash": "4e7a61026338cd7bb0a32ceca8e7a0c3906dddc5cbb793ef4b933918d0b80131",
+  "hash_algo": "sha256",
+  "hash_computed_at": "2026-06-29T12:05:38"
 }

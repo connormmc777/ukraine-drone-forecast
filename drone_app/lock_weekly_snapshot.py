@@ -138,25 +138,50 @@ def lock(week_start: date, capacity: int, tempo: float,
 
     # Defense-in-depth: also write a JSON archive per snapshot so the
     # prediction survives any DB corruption / accidental wipe.
+    # AND compute a SHA256 hash for tamper-evidence.
     import json
+    import snapshot_integrity as _si
+    per_oblast = [{
+        'oblast': row['oblast'],
+        'prior_share': float(row['share']),
+        'obs_share': float(row['obs_share']),
+        'learned_share': float(row['learned_share']),
+        'predicted_week': float(row['predicted_week']),
+    } for _, row in forecast.iterrows()]
+
+    canonical = _si.canonical_snapshot_payload(
+        week_start=week_start.isoformat(),
+        russian_daily_capacity=int(capacity),
+        tempo_factor=float(tempo),
+        weekly_budget=weekly_budget,
+        learning_alpha=float(forecast['alpha'].iloc[0]),
+        per_oblast=per_oblast,
+    )
+    prediction_hash = _si.compute_hash(canonical)
+    hash_computed_at = datetime.now().isoformat(timespec='seconds')
+
+    # Persist hash to DB
+    _si.ensure_hash_column(DB_PATH)
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("UPDATE snapshots SET prediction_hash=?, hash_computed_at=? "
+                     "WHERE id=?",
+                     (prediction_hash, hash_computed_at, snap_id))
+
     archive_dir = DATA_DIR / 'snapshot_archive'
     archive_dir.mkdir(exist_ok=True)
     archive_payload = {
         'snapshot_id': snap_id,
-        'created_at': datetime.now().isoformat(timespec='seconds'),
+        'created_at': hash_computed_at,
         'week_start': week_start.isoformat(),
         'russian_daily_capacity': int(capacity),
         'tempo_factor': float(tempo),
         'weekly_budget': weekly_budget,
         'learning_alpha': float(forecast['alpha'].iloc[0]),
         'note': note or '',
-        'per_oblast': [{
-            'oblast': row['oblast'],
-            'prior_share': float(row['share']),
-            'obs_share': float(row['obs_share']),
-            'learned_share': float(row['learned_share']),
-            'predicted_week': float(row['predicted_week']),
-        } for _, row in forecast.iterrows()],
+        'prediction_hash': prediction_hash,
+        'hash_algo': 'sha256',
+        'hash_computed_at': hash_computed_at,
+        'per_oblast': per_oblast,
     }
     archive_path = archive_dir / f"snapshot_{snap_id:03d}_week_{week_start.isoformat()}.json"
     archive_path.write_text(json.dumps(archive_payload, indent=2))

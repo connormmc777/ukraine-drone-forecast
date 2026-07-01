@@ -1539,6 +1539,229 @@ except Exception as _wt_e:
     st.warning(f"Weekly ledger unavailable: {_wt_e}")
 
 
+# ============== PREDICTED VS ACTUAL — BARS + LINES + 14D ROLLING ==============
+# Interactive panel: bars for weekly predicted vs actual, overlay lines
+# for 14-day rolling average. Selectable month(s) and oblast.
+try:
+    import sqlite3 as _sq3_pva
+    with _sq3_pva.connect(DB_PATH) as _c:
+        _all_snaps = pd.read_sql_query(
+            "SELECT id, week_start, weekly_budget FROM snapshots ORDER BY id", _c)
+        _all_snaprows = pd.read_sql_query(
+            "SELECT snapshot_id, oblast, predicted_week FROM snapshot_rows", _c)
+
+    # Latest snapshot per week (data-driven ones)
+    _week_to_snap = (_all_snaps.drop_duplicates('week_start', keep='last')
+                      .set_index('week_start')['id'].to_dict())
+
+    with st.container():
+        st.markdown("### 📊 Predicted vs Actual — bars + lines + 14-day rolling average")
+        st.caption(
+            "Time-selectable comparison of budgeted vs actual per week or "
+            "per oblast, with the 14-day rolling average of actuals overlaid "
+            "as a smoothed trend line. Select month(s) and an oblast to "
+            "zoom in."
+        )
+
+        # === Controls ===
+        _daily_ts = daily_totals.copy()
+        _daily_ts['date'] = pd.to_datetime(_daily_ts['date'])
+        _daily_ts['month_key'] = _daily_ts['date'].dt.strftime('%Y-%m')
+        _months_available = sorted(_daily_ts['month_key'].unique())
+        _month_labels = {m: pd.Timestamp(m + '-01').strftime('%b %Y')
+                         for m in _months_available}
+
+        _oblast_options = ['ALL OBLASTS (aggregate)'] + sorted(oblasts['oblast'].tolist())
+
+        pcol1, pcol2 = st.columns([2, 3])
+        with pcol1:
+            _sel_oblast = st.selectbox(
+                'Oblast',
+                options=_oblast_options,
+                index=0,
+                key='pva_oblast',
+            )
+        with pcol2:
+            _sel_months = st.multiselect(
+                'Month(s)',
+                options=_months_available,
+                default=_months_available,
+                format_func=lambda m: _month_labels[m],
+                key='pva_months',
+            )
+
+        if not _sel_months:
+            st.info("Select at least one month.")
+        else:
+            # === Data prep ===
+            _month_mask = _daily_ts['month_key'].isin(_sel_months)
+            _daily_filt = _daily_ts[_month_mask].copy()
+
+            # Scaled observations for the same window
+            _obs_pva = observations.copy()
+            _obs_pva['observation_date'] = pd.to_datetime(_obs_pva['observation_date'])
+            _obs_filt = _obs_pva[_obs_pva['observation_date'].dt.strftime('%Y-%m')
+                                  .isin(_sel_months)]
+
+            if _sel_oblast == 'ALL OBLASTS (aggregate)':
+                # Daily actuals across all
+                _daily_actual = (_daily_filt.groupby('date')['launched']
+                                  .sum().reset_index())
+                # Weekly predicted from snapshots (aggregate across all oblasts)
+                _wk_preds = []
+                for _ws, _sid in _week_to_snap.items():
+                    _pred_total = _all_snaprows[_all_snaprows['snapshot_id']==_sid][
+                        'predicted_week'].sum()
+                    _wk_preds.append({'week_start': pd.Timestamp(_ws),
+                                       'predicted': float(_pred_total)})
+                _pred_df = pd.DataFrame(_wk_preds)
+                _pred_df = _pred_df[_pred_df['week_start'].dt.strftime('%Y-%m')
+                                     .isin(_sel_months)]
+                _label = "all oblasts"
+            else:
+                # Filter to a single oblast
+                _daily_actual = (_obs_filt[_obs_filt['oblast']==_sel_oblast]
+                                  .groupby('observation_date')['observed_drones']
+                                  .sum().reset_index()
+                                  .rename(columns={'observation_date':'date',
+                                                    'observed_drones':'launched'}))
+                _wk_preds = []
+                for _ws, _sid in _week_to_snap.items():
+                    _p = _all_snaprows[(_all_snaprows['snapshot_id']==_sid) &
+                                        (_all_snaprows['oblast']==_sel_oblast)]
+                    _pred_total = float(_p['predicted_week'].sum())
+                    _wk_preds.append({'week_start': pd.Timestamp(_ws),
+                                       'predicted': _pred_total})
+                _pred_df = pd.DataFrame(_wk_preds)
+                _pred_df = _pred_df[_pred_df['week_start'].dt.strftime('%Y-%m')
+                                     .isin(_sel_months)]
+                _label = _sel_oblast
+
+            # Aggregate actual to weekly for bar comparison
+            if not _daily_actual.empty:
+                _daily_actual['week_start'] = (
+                    _daily_actual['date']
+                    - pd.to_timedelta(_daily_actual['date'].dt.weekday, unit='D')
+                )
+                _weekly_actual = _daily_actual.groupby('week_start')['launched'].sum().reset_index()
+                _weekly_actual.columns = ['week_start', 'actual']
+            else:
+                _weekly_actual = pd.DataFrame(columns=['week_start','actual'])
+
+            # 14-day rolling average of daily launches (only meaningful for all-oblast
+            # or when the oblast has continuous data)
+            _daily_actual_sorted = _daily_actual.sort_values('date') if not _daily_actual.empty else pd.DataFrame()
+            if not _daily_actual_sorted.empty:
+                _daily_actual_sorted['rolling_14'] = (
+                    _daily_actual_sorted['launched'].rolling(14, min_periods=3).mean()
+                )
+                # Weekly average of the 14-day rolling (for chart smoothness)
+                _daily_actual_sorted['week_start'] = (
+                    _daily_actual_sorted['date']
+                    - pd.to_timedelta(_daily_actual_sorted['date'].dt.weekday, unit='D')
+                )
+
+            # Merge weekly actual with weekly predicted
+            _combined = _pred_df.merge(_weekly_actual, on='week_start', how='outer')
+            _combined = _combined.sort_values('week_start').fillna(0)
+
+            # === Chart ===
+            fig_pva, ax_pva = plt.subplots(figsize=(13, 5.5))
+            _weeks = _combined['week_start'].tolist()
+            if _weeks:
+                _x_positions = list(range(len(_weeks)))
+                _bar_width = 0.38
+                ax_pva.bar([xi - _bar_width/2 for xi in _x_positions],
+                            _combined['predicted'], _bar_width,
+                            color='#003d7a', alpha=0.85,
+                            edgecolor='white', linewidth=0.6,
+                            label='Predicted (weekly budget)')
+                ax_pva.bar([xi + _bar_width/2 for xi in _x_positions],
+                            _combined['actual'], _bar_width,
+                            color='#cc0033', alpha=0.85,
+                            edgecolor='white', linewidth=0.6,
+                            label='Actual (weekly total)')
+
+                # Line for weekly-actual trend
+                ax_pva.plot(_x_positions, _combined['actual'],
+                             marker='s', color='#cc0033', linewidth=1.5,
+                             alpha=0.5, zorder=5)
+                # Line for weekly-predicted trend
+                ax_pva.plot(_x_positions, _combined['predicted'],
+                             marker='o', color='#003d7a', linewidth=1.5,
+                             alpha=0.5, zorder=5)
+
+                # 14-day rolling on daily actuals (mapped to weeks)
+                if not _daily_actual_sorted.empty and \
+                        _daily_actual_sorted['rolling_14'].notna().any():
+                    # For each of our chart weeks, take the 14-day rolling on the
+                    # LAST day of that week (or last available day within week)
+                    _rolling_points = []
+                    for wi, w in enumerate(_weeks):
+                        _in_week = _daily_actual_sorted[
+                            (_daily_actual_sorted['date'] >= w) &
+                            (_daily_actual_sorted['date'] < w + pd.Timedelta(days=7))
+                        ]
+                        if not _in_week.empty:
+                            _val = _in_week['rolling_14'].dropna().mean()
+                            if pd.notna(_val):
+                                # Rolling avg is daily → scale to weekly for comparison
+                                _rolling_points.append((wi, _val * 7))
+                    if _rolling_points:
+                        _rx, _ry = zip(*_rolling_points)
+                        ax_pva.plot(_rx, _ry, marker='^', color='#2a8c4a',
+                                     linewidth=2.5, linestyle='--',
+                                     label='14-day rolling avg × 7 (weekly equivalent)',
+                                     zorder=6)
+
+                ax_pva.set_xticks(_x_positions)
+                ax_pva.set_xticklabels([w.strftime('%b %d') for w in _weeks],
+                                        rotation=25, ha='right', fontsize=9)
+                ax_pva.set_ylabel('Drones per week')
+                ax_pva.set_title(
+                    f"Predicted vs Actual — {_label}   ·   months: "
+                    f"{', '.join(_month_labels[m] for m in _sel_months)}",
+                    fontsize=12, fontweight='bold')
+                ax_pva.legend(loc='upper right', fontsize=9)
+                ax_pva.grid(alpha=0.3, axis='y')
+
+                st.pyplot(fig_pva)
+
+            # Summary numbers under the chart
+            if not _combined.empty:
+                _total_pred = int(_combined['predicted'].sum())
+                _total_actual = int(_combined['actual'].sum())
+                _err = _total_pred - _total_actual
+                _pct = (_err / _total_actual * 100) if _total_actual else 0
+                sc1, sc2, sc3, sc4 = st.columns(4)
+                with sc1: st.metric("Total predicted", f"{_total_pred:,}")
+                with sc2: st.metric("Total actual", f"{_total_actual:,}")
+                with sc3: st.metric("Error", f"{_err:+,}",
+                                     help="Predicted minus actual")
+                with sc4: st.metric("% off",
+                                     f"{_pct:+.1f}%",
+                                     delta_color='inverse')
+
+                # Show the underlying table
+                with st.expander("Raw weekly numbers"):
+                    _table = _combined.copy()
+                    _table['week_start'] = _table['week_start'].dt.date
+                    _table['error'] = _table['predicted'] - _table['actual']
+                    _table['pct_off'] = _table.apply(
+                        lambda r: (r['predicted']-r['actual'])/r['actual']*100
+                        if r['actual'] else 0, axis=1)
+                    _table.columns = ['Week start','Predicted','Actual','Error','% off']
+                    _table['Predicted'] = _table['Predicted'].astype(int)
+                    _table['Actual'] = _table['Actual'].astype(int)
+                    _table['Error'] = _table['Error'].astype(int)
+                    _table['% off'] = _table['% off'].round(1)
+                    st.dataframe(_table, use_container_width=True, hide_index=True)
+
+    st.divider()
+except Exception as _pva_e:
+    st.warning(f"Predicted-vs-actual panel unavailable: {_pva_e}")
+
+
 # ============== STRATEGIC EXCHANGE (BOTH DIRECTIONS) ==============
 # Two-way cost accounting: who's actually winning on dollars,
 # and does Ukraine's refinery campaign change the math.

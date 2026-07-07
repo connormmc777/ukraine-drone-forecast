@@ -1762,6 +1762,154 @@ except Exception as _pva_e:
     st.warning(f"Predicted-vs-actual panel unavailable: {_pva_e}")
 
 
+# ============== DAILY SURGE PROBABILITY ==============
+try:
+    import surge_probability as _sp
+    import importlib as _il
+    _il.reload(_sp)
+
+    with st.container():
+        st.markdown("### ⚡ Daily surge probability model")
+        st.caption(
+            "Logistic regression on 5 features estimates P(surge tomorrow), "
+            "where 'surge' = daily launches ≥ threshold. Uses only past "
+            "days' data — no look-ahead."
+        )
+
+        # Controls
+        scol1, scol2 = st.columns([1, 1])
+        with scol1:
+            _surge_threshold = st.number_input(
+                "Surge threshold (drones / day)",
+                min_value=100, max_value=1000, value=300, step=25,
+                key='surge_threshold',
+                help="Days with launches ≥ this count as surges.",
+            )
+        with scol2:
+            _prod_rate_input = st.number_input(
+                "Assumed production rate (drones/day)",
+                min_value=100, max_value=1000, value=283, step=10,
+                key='surge_prod_rate',
+                help="Used for buffer estimation (production − consumption).",
+            )
+
+        # Prepare data + fit
+        _sdata = daily_totals.copy()
+        _sdata['date'] = pd.to_datetime(_sdata['date'])
+        _sdata_agg = _sdata.groupby('date', as_index=False)['launched'].sum().sort_values('date')
+
+        _model = _sp.SurgeModel(threshold=int(_surge_threshold),
+                                  production_rate=int(_prod_rate_input))
+        _fit_stats = _model.fit(_sdata_agg)
+
+        # Today's prediction (or tomorrow if data goes through today)
+        _last_data_day = _sdata_agg['date'].max().date()
+        _target_day = _last_data_day + timedelta(days=1)
+        _pred_today = _model.predict_next(_sdata_agg, target_date=_target_day)
+
+        # Headline metric
+        p = _pred_today['p_surge']
+        pcol1, pcol2, pcol3, pcol4 = st.columns(4)
+        with pcol1:
+            st.metric(
+                f"P(surge on {_target_day})",
+                f"{p*100:.1f}%",
+                help=f"Model's estimate. Base rate is "
+                     f"{_fit_stats.get('base_rate', 0.15)*100:.1f}% in training data.",
+            )
+        with pcol2:
+            st.metric(
+                "Days since last surge",
+                _pred_today['features']['days_since_last_surge'],
+                help="Capped at 30. Higher = more overdue.",
+            )
+        with pcol3:
+            st.metric(
+                "Buffer estimate (drones)",
+                f"{_pred_today['features']['buffer_estimate']:+,.0f}",
+                help="Production − launches over trailing 14 days. "
+                     "Positive = stockpile accumulating.",
+            )
+        with pcol4:
+            st.metric(
+                "14-day rolling avg",
+                f"{_pred_today['features']['rolling_14day_avg']:.0f}",
+                f"trend: {_pred_today['features']['trend_slope_7day']:+.1f}/day",
+            )
+
+        # Math explainer
+        with st.expander("🧮 The math (logistic regression)"):
+            st.latex(
+                r"P(\mathrm{surge}) = "
+                r"\frac{1}{1 + e^{-z}}, \quad "
+                r"z = \beta_0 + \sum_{i=1}^{5} \beta_i \cdot x_i"
+            )
+            st.markdown(
+                "**Features (x_i):**\n"
+                "1. `days_since_last_surge` — hazard-rate proxy (grows with time)\n"
+                "2. `rolling_14day_avg` — baseline tempo\n"
+                "3. `buffer_estimate` — production − launches (stockpile signal)\n"
+                "4. `trend_slope_7day` — linear-regression slope, last 7 days\n"
+                "5. `post_surge_penalty` — 1 if yesterday was a surge (stockpile drained)\n\n"
+                "**Fitting**: L2-regularized maximum-likelihood via `scipy.minimize`."
+            )
+            st.markdown("**Fit statistics on your data:**")
+            st.json(_fit_stats)
+            st.markdown("**Fitted coefficients (β):**")
+            _cdf = pd.DataFrame([
+                {'feature': k, 'coefficient': round(v, 4)}
+                for k, v in _model.coeffs.items()])
+            st.dataframe(_cdf, use_container_width=True, hide_index=True)
+
+        # 7-day forecast
+        st.markdown("**Next 7 days — daily surge probabilities:**")
+        _forecast = _model.predict_next_week(_sdata_agg, start_date=_target_day, n_days=7)
+        _fdf = pd.DataFrame([{
+            'date': f['target_date'],
+            'p_surge_pct': round(f['p_surge']*100, 1),
+            'days_since_last_surge': f['features']['days_since_last_surge'],
+            'rolling_14day': round(f['features']['rolling_14day_avg'], 0),
+        } for f in _forecast])
+        st.dataframe(_fdf, use_container_width=True, hide_index=True)
+
+        # Chart the forecast
+        fig_sp, ax_sp = plt.subplots(figsize=(11, 3.5))
+        ax_sp.bar(_fdf['date'], _fdf['p_surge_pct'],
+                    color='#cc0033', alpha=0.75, edgecolor='black', linewidth=0.5)
+        ax_sp.axhline(_fit_stats.get('base_rate', 0.15)*100,
+                       color='gray', linestyle='--', alpha=0.6,
+                       label=f"Base rate ({_fit_stats.get('base_rate', 0.15)*100:.1f}%)")
+        for i, r in _fdf.iterrows():
+            ax_sp.text(i, r['p_surge_pct'] + 0.5, f"{r['p_surge_pct']:.0f}%",
+                        ha='center', fontsize=8, fontweight='bold')
+        ax_sp.set_ylabel('P(surge) %')
+        ax_sp.set_title(f'7-day surge probability forecast '
+                         f'(threshold = {int(_surge_threshold)}/day)',
+                         fontsize=11, fontweight='bold')
+        ax_sp.legend()
+        ax_sp.grid(alpha=0.3, axis='y')
+        plt.setp(ax_sp.get_xticklabels(), rotation=25, ha='right', fontsize=8)
+        st.pyplot(fig_sp)
+
+        # Feature contributions to today's z-score
+        with st.expander("Contribution breakdown for today's prediction"):
+            _contribs = _pred_today['contributions_to_z']
+            _contribs_df = pd.DataFrame([
+                {'feature': k, 'contribution_to_z': v,
+                 'moves_prob_toward': 'SURGE' if v > 0 else 'no-surge' if v < 0 else 'neutral'}
+                for k, v in _contribs.items()
+            ]).sort_values('contribution_to_z', key=abs, ascending=False)
+            st.dataframe(_contribs_df, use_container_width=True, hide_index=True)
+            st.caption(
+                f"Total z = {_pred_today['z']:.3f}   →   "
+                f"P(surge) = 1/(1+e^-z) = **{p*100:.1f}%**"
+            )
+
+    st.divider()
+except Exception as _sp_e:
+    st.warning(f"Surge probability panel unavailable: {_sp_e}")
+
+
 # ============== STRATEGIC EXCHANGE (BOTH DIRECTIONS) ==============
 # Two-way cost accounting: who's actually winning on dollars,
 # and does Ukraine's refinery campaign change the math.

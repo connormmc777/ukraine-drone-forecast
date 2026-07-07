@@ -1,0 +1,82 @@
+{
+  "week_start": "2026-06-29",
+  "closed_at": "2026-07-06T19:25:23",
+  "snapshot_id": 10,
+  "predicted_total": 1253,
+  "actual_total": 920,
+  "total_error": 333,
+  "pct_off": 36.19565217391305,
+  "spatial_r": 0.9708245880067797,
+  "mae_per_oblast": 33.125,
+  "is_data_gap": false,
+  "per_oblast_actual": {
+    "Chernihiv": 50,
+    "Dnipropetrovsk": 69,
+    "Donetsk": 8,
+    "Kharkiv": 63,
+    "Kherson": 12,
+    "Kirovohrad": 6,
+    "Mykolaiv": 33,
+    "Odesa": 17,
+    "Poltava": 40,
+    "Sumy": 70,
+    "Zaporizhzhia": 47,
+    "Kyiv City": 22,
+    "Kyiv Oblast": 12,
+    "Vinnytsia": 2,
+    "Zhytomyr": 5,
+    "Cherkasy": 2
+  },
+  "daily_progression": [
+    {
+      "observation_date": "2026-06-29",
+      "day_of_week": 0,
+      "daily_launched": 108,
+      "daily_intercepted": 82,
+      "daily_hits": 25,
+      "cumulative_launched": 108,
+      "cumulative_intercepted": 82,
+      "cumulative_hits": 25
+    },
+    {
+      "observation_date": "2026-07-02",
+      "day_of_week": 3,
+      "daily_launched": 496,
+      "daily_intercepted": 524,
+      "daily_hits": 0,
+      "cumulative_launched": 604,
+      "cumulative_intercepted": 606,
+      "cumulative_hits": 25
+    },
+    {
+      "observation_date": "2026-07-03",
+      "day_of_week": 4,
+      "daily_launched": 105,
+      "daily_intercepted": 83,
+      "daily_hits": 0,
+      "cumulative_launched": 709,
+      "cumulative_intercepted": 689,
+      "cumulative_hits": 25
+    },
+    {
+      "observation_date": "2026-07-04",
+      "day_of_week": 5,
+      "daily_launched": 86,
+      "daily_intercepted": 69,
+      "daily_hits": 0,
+      "cumulative_launched": 795,
+      "cumulative_intercepted": 758,
+      "cumulative_hits": 25
+    },
+    {
+      "observation_date": "2026-07-05",
+      "day_of_week": 6,
+      "daily_launched": 125,
+      "daily_intercepted": 115,
+      "daily_hits": 4,
+      "cumulative_launched": 920,
+      "cumulative_intercepted": 873,
+      "cumulative_hits": 29
+    }
+  ]
+}

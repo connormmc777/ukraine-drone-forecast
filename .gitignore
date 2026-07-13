@@ -29,3 +29,7 @@ drone_app/data/forecast_history.db
 # Logs
 /tmp/streamlit.log
 *.log
+
+# Local secrets — Cloudflare tunnel tokens, API keys, etc.
+deploy/my-secrets.yaml
+.env

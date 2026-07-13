@@ -1,0 +1,115 @@
+# Default values for the dronespredictions chart.
+
+replicaCount: 1
+
+image:
+  # For local single-node k3s: build with `podman build -t dronespredictions:latest .`
+  # then import via `sudo k3s ctr images import dp.tar` and set pullPolicy=Never.
+  # For a registry-based flow: repository=ghcr.io/<user>/dronespredictions, pullPolicy=Always.
+  repository: dronespredictions
+  tag: latest
+  pullPolicy: Never
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8501
+
+# No in-cluster ingress controller when cloudflared sidecar is enabled — the
+# tunnel IS the ingress. Enable for kind-with-nginx flows.
+ingress:
+  enabled: false
+  className: nginx
+  host: drones.local
+  tls:
+    enabled: false
+    secretName: ""
+
+# Non-secret env vars baked into a ConfigMap.
+config:
+  BASE_URL: "http://localhost:8501"
+  STREAMLIT_SERVER_HEADLESS: "true"
+  STREAMLIT_SERVER_ADDRESS: "0.0.0.0"
+  STREAMLIT_SERVER_PORT: "8501"
+  STREAMLIT_BROWSER_GATHER_USAGE_STATS: "false"
+  SYNC_INTERVAL_SECONDS: "7200"
+
+# Optional secrets. Provide via -f my-secrets.yaml or --set-string on install.
+secrets:
+  TELETHON_API_ID: ""
+  TELETHON_API_HASH: ""
+  ACLED_EMAIL: ""
+  ACLED_PASSWORD: ""
+
+# Persistent volume for CSV + SQLite data.
+persistence:
+  enabled: true
+  storageClass: ""    # empty = cluster default (k3s: local-path)
+  size: 2Gi
+  accessMode: ReadWriteOnce
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# Sync sidecar: pulls fresh UA Air Force Telegram data on an interval.
+# Same behavior as the standalone autostart_sync loop, containerized.
+syncSidecar:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 384Mi
+
+# -----------------------------------------------------------------------------
+# Cloudflare Tunnel sidecar
+# -----------------------------------------------------------------------------
+# Outbound-only connector to Cloudflare's edge. Forwards inbound tunnel traffic
+# to the app container over localhost (same pod = same network namespace).
+#
+# To use:
+#   1) Cloudflare Zero Trust → Networks → Tunnels → create tunnel.
+#   2) Copy the tunnel token.
+#   3) Add a public hostname routing your domain → http://localhost:8501.
+#   4) Pass the token via `-f deploy/my-secrets.yaml` (gitignored) or
+#      `--set-string cloudflared.token=eyJ...` at install time.
+cloudflared:
+  enabled: false
+  image:
+    repository: cloudflare/cloudflared
+    tag: "2025.7.0"
+    pullPolicy: IfNotPresent
+  token: ""
+  resources:
+    requests:
+      cpu: 20m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# Scheduled maintenance jobs. Both are idempotent — safe to re-run.
+cronJobs:
+  # Locks the weekly forecast snapshot (weekly_budget, oblast targeting, etc.)
+  # into forecast_history.db every Monday. Enables backtesting later.
+  weeklyLock:
+    enabled: true
+    schedule: "0 6 * * 1"   # Mondays 06:00 UTC
+  # Records today's P(surge) prediction into surge_daily_log AND stamps
+  # yesterday's row with its actual outcome. Builds a rolling calibration
+  # record with zero manual bookkeeping.
+  dailySurge:
+    enabled: true
+    schedule: "5 6 * * *"   # Daily 06:05 UTC (5 min after weekly lock)
+
+# Deny-by-default NetworkPolicies. Requires a CNI that enforces them
+# (Calico). k3s' default flannel does not — policies remain declarative-only.
+networkPolicy:
+  enabled: false

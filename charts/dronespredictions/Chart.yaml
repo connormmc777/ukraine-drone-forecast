@@ -1,0 +1,8 @@
+apiVersion: v2
+name: dronespredictions
+description: Ukraine drone forecast dashboard — Streamlit app with self-updating model.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+
+# No dependencies — the app uses SQLite + CSVs on a PVC, not Postgres.

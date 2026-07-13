@@ -1,0 +1,127 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dronespredictions.fullname" . }}
+  labels:
+    {{- include "dronespredictions.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: Recreate    # single replica + PVC — avoid RWO ownership races
+  selector:
+    matchLabels:
+      {{- include "dronespredictions.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "dronespredictions.selectorLabels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+      # PVC ownership: fsGroup makes k3s chown mounts so the UID-1000 app
+      # user (baked into the Dockerfile) can write /app/data. cloudflared
+      # runs as its own uid from the sidecar image — do NOT force runAsUser
+      # at the pod level or the sidecar breaks.
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: app
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "dronespredictions.fullname" . }}-config
+            - secretRef:
+                name: {{ include "dronespredictions.fullname" . }}-secrets
+          livenessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+
+        {{- if .Values.syncSidecar.enabled }}
+        - name: sync-loop
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "dronespredictions.fullname" . }}-config
+            - secretRef:
+                name: {{ include "dronespredictions.fullname" . }}-secrets
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              while true; do
+                python cron_sync_inner.py || echo "sync failed"
+                sleep ${SYNC_INTERVAL_SECONDS:-7200}
+              done
+          resources:
+            {{- toYaml .Values.syncSidecar.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+        {{- end }}
+
+        {{- if .Values.cloudflared.enabled }}
+        - name: cloudflared
+          image: "{{ .Values.cloudflared.image.repository }}:{{ .Values.cloudflared.image.tag }}"
+          imagePullPolicy: {{ .Values.cloudflared.image.pullPolicy }}
+          args:
+            - tunnel
+            - --no-autoupdate
+            - --metrics
+            - 0.0.0.0:2000
+            - run
+            # HTTP/2 over TCP instead of the default QUIC. QUIC connections
+            # can go half-open silently; TCP keepalives catch stale connections
+            # within seconds so the tunnel edge routes around them.
+            - --protocol
+            - http2
+            - --token
+            - $(CF_TUNNEL_TOKEN)
+          env:
+            - name: CF_TUNNEL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "dronespredictions.fullname" . }}-secrets
+                  key: CF_TUNNEL_TOKEN
+          ports:
+            - name: metrics
+              containerPort: 2000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            {{- toYaml .Values.cloudflared.resources | nindent 12 }}
+        {{- end }}
+
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "dronespredictions.fullname" . }}-data
+          {{- else }}
+          emptyDir: {}
+          {{- end }}

@@ -1,0 +1,103 @@
+# dronespredictions values for Bazzite single-node k3s.
+#
+# The app image is built with podman ON THIS BOX and imported into k3s'
+# containerd directly (no registry push). That's why pullPolicy=Never — k3s
+# must not try to fetch dronespredictions:latest from anywhere else.
+#
+# Install:
+#   bash deploy/bazzite/install.sh
+# which reads deploy/my-secrets.yaml for the Cloudflare tunnel token and
+# runs the helm command below.
+
+replicaCount: 1
+
+image:
+  # podman prefixes local builds with `localhost/`; k3s containerd sees the same
+  # name after `k3s ctr -n k8s.io images import`, so the pod spec must match.
+  repository: localhost/dronespredictions
+  tag: latest
+  pullPolicy: Never       # image is local-imported via `k3s ctr images import`
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8501
+
+# Cloudflared sidecar IS the ingress. No in-cluster ingress controller.
+ingress:
+  enabled: false
+
+config:
+  # BASE_URL is the public hostname so any absolute-URL rendering the app
+  # does (rare in Streamlit) matches the domain users see.
+  BASE_URL: "https://dronespredictions.net"
+  STREAMLIT_SERVER_HEADLESS: "true"
+  STREAMLIT_SERVER_ADDRESS: "0.0.0.0"
+  STREAMLIT_SERVER_PORT: "8501"
+  STREAMLIT_BROWSER_GATHER_USAGE_STATS: "false"
+  # 2h refresh cadence. Matches the pre-k3s host autostart_sync loop.
+  SYNC_INTERVAL_SECONDS: "7200"
+
+# Optional data-source secrets. Leave blank until you actually want fresh
+# ACLED / private-Telegram pulls; the public @kpszsu channel does not require
+# these to be set.
+secrets:
+  TELETHON_API_ID: ""
+  TELETHON_API_HASH: ""
+  ACLED_EMAIL: ""
+  ACLED_PASSWORD: ""
+
+persistence:
+  enabled: true
+  size: 2Gi
+  storageClass: local-path   # k3s ships this as the default StorageClass
+  accessMode: ReadWriteOnce
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    # forecast_history.db is ~820MB and pandas loads chunks of it into
+    # RAM alongside geopandas' oblast polygons and every matplotlib figure
+    # the dashboard renders. 1Gi triggers OOMKills. 4Gi gives real headroom.
+    memory: 4Gi
+
+syncSidecar:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 384Mi
+
+cloudflared:
+  enabled: true
+  image:
+    repository: cloudflare/cloudflared
+    tag: "2025.7.0"
+    pullPolicy: IfNotPresent
+  # Token is injected on install from deploy/my-secrets.yaml — never
+  # committed. See deploy/bazzite/install.sh.
+  token: ""
+  resources:
+    requests:
+      cpu: 20m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+cronJobs:
+  weeklyLock:
+    enabled: true
+    schedule: "0 6 * * 1"   # Mondays 06:00 UTC = 09:00 Kyiv
+  dailySurge:
+    enabled: true
+    schedule: "5 6 * * *"   # 06:05 UTC daily
+
+networkPolicy:
+  enabled: false

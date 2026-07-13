@@ -1,0 +1,55 @@
+# Smoke-test stack: run the drone forecast dashboard locally in Docker.
+# Same pattern as MarketBrawl's compose — no Kubernetes needed to verify
+# the image works end-to-end before loading it into kind.
+#
+#   docker compose up --build
+#   # browse http://localhost:8501
+#   docker compose down -v   # -v wipes the persistent data volume
+#
+# Unlike MarketBrawl there's no Postgres — the drone app persists to
+# CSV + SQLite on a mounted volume.
+
+services:
+  dronespredictions:
+    build: .
+    image: dronespredictions:dev
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      BASE_URL: "http://localhost:8501"
+      STREAMLIT_SERVER_HEADLESS: "true"
+      STREAMLIT_SERVER_ADDRESS: "0.0.0.0"
+      STREAMLIT_SERVER_PORT: "8501"
+      STREAMLIT_BROWSER_GATHER_USAGE_STATS: "false"
+    volumes:
+      # Persist data across container restarts. Matches the K8s PVC.
+      - drone-data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Sidecar loop: every 2 hours, pull fresh UA Air Force Telegram data.
+  # Same shape as the systemd/autostart pattern we use bare-metal —
+  # here it's just a second container in the same compose stack.
+  sync-loop:
+    image: dronespredictions:dev
+    restart: unless-stopped
+    depends_on:
+      dronespredictions:
+        condition: service_healthy
+    volumes:
+      - drone-data:/app/data
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          python cron_sync_inner.py || echo "sync failed, retrying in 2h"
+          sleep ${SYNC_INTERVAL_SECONDS:-7200}
+        done
+
+volumes:
+  drone-data:

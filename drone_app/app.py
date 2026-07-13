@@ -2530,7 +2530,7 @@ if not daily_totals.empty and total_launched > 0:
                 for j in range(idx):
                     pp = weekly_c.iloc[j]
                     ax_w.scatter(pp['lon'], pp['lat'], s=60, color='blue',
-                                  edgecolor='white', alpha=0.25+0.13*j, zorder=8)
+                                  edgecolor='white', alpha=min(0.25+0.13*j, 1.0), zorder=8)
                 if idx > 0:
                     pp = weekly_c.iloc[idx-1]
                     ax_w.annotate('', xy=(w_row['lon'], w_row['lat']),

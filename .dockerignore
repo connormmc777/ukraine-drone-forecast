@@ -1,0 +1,14 @@
+# Don't drag the venv, DB, or archives into the image
+drone_app/venv/
+drone_app/data/forecast_history.db
+drone_app/data/.tg_sync_log.json
+drone_app/data/.acled_creds.json
+drone_app/data/.acled_sync_log.json
+drone_app/__pycache__/
+drone_app/**/__pycache__/
+drone_app/**/*.pyc
+.git/
+.gitignore
+*.log
+drone_app.zip
+CONVERSATION_SUMMARY.md

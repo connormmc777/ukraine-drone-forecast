@@ -1,0 +1,13 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: dronespredictions
+# Single node is plenty for one Streamlit app.
+nodes:
+  - role: control-plane
+    # Expose 30080 on the host → 30080 in the cluster. Only used
+    # if you want to reach the app directly on your machine (not
+    # via Cloudflare Tunnel).
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 30080
+        protocol: TCP

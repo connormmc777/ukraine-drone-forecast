@@ -1,0 +1,44 @@
+{{- if .Values.cronJobs.weeklyLock.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "dronespredictions.fullname" . }}-weekly-lock
+  labels:
+    {{- include "dronespredictions.labels" . | nindent 4 }}
+spec:
+  # Monday 06:00 UTC (09:00 Kyiv). The lock script is idempotent — running
+  # it twice on the same Monday is a no-op.
+  schedule: {{ .Values.cronJobs.weeklyLock.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            {{- include "dronespredictions.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: weekly-lock
+        spec:
+          restartPolicy: OnFailure
+          # PVC ownership: match the app's fsGroup so the writes land as UID 1000
+          securityContext:
+            fsGroup: 1000
+          containers:
+            - name: lock
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              workingDir: /app
+              command: ["python", "lock_weekly_snapshot.py"]
+              envFrom:
+                - configMapRef:
+                    name: {{ include "dronespredictions.fullname" . }}-config
+              volumeMounts:
+                - name: data
+                  mountPath: /app/data
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: {{ include "dronespredictions.fullname" . }}-data
+{{- end }}

@@ -1,0 +1,44 @@
+{{- if .Values.cronJobs.dailySurge.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "dronespredictions.fullname" . }}-daily-surge
+  labels:
+    {{- include "dronespredictions.labels" . | nindent 4 }}
+spec:
+  # Daily at 06:05 UTC (five past the weekly-lock time so they don't overlap
+  # on Mondays). Backfills yesterday's actual outcome + logs today's fresh
+  # P(surge) for tomorrow — one row per calendar day.
+  schedule: {{ .Values.cronJobs.dailySurge.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            {{- include "dronespredictions.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: daily-surge
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            fsGroup: 1000
+          containers:
+            - name: surge
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              workingDir: /app
+              command: ["python", "daily_surge_log.py"]
+              envFrom:
+                - configMapRef:
+                    name: {{ include "dronespredictions.fullname" . }}-config
+              volumeMounts:
+                - name: data
+                  mountPath: /app/data
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: {{ include "dronespredictions.fullname" . }}-data
+{{- end }}

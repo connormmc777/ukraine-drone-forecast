@@ -31,5 +31,11 @@ drone_app/data/forecast_history.db
 *.log
 
 # Local secrets — Cloudflare tunnel tokens, API keys, etc.
+# The my-secrets.yaml* glob also covers editor backups (.save from nano,
+# .swp from vim, ~ backup) so a stray autosave can never leak the token.
 deploy/my-secrets.yaml
+deploy/my-secrets.yaml.*
+deploy/my-secrets.yaml~
 .env
+.env.*
+!.env.example

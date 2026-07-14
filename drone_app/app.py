@@ -667,6 +667,135 @@ else:
         st.info(f"Last observation: {last_obs_date} (yesterday). "
                 f"Sync ACLED for today's events.")
 
+# ============== LIVE — LATEST REGIONAL ACTIVITY (top-of-page) ==============
+# Refreshes on every autorefresh tick. Shows the newest per-oblast counts,
+# the day's per-oblast budget from the current locked snapshot, the delta
+# actual − budget, a distance table between successive latest-hit regions,
+# and a bar chart of the single most-recently-hit region's actual vs budget.
+def _haversine_km(lat1, lon1, lat2, lon2):
+    R = 6371.0
+    lat1r, lat2r = np.radians(lat1), np.radians(lat2)
+    dlat = np.radians(lat2 - lat1)
+    dlon = np.radians(lon2 - lon1)
+    a = (np.sin(dlat / 2) ** 2 +
+         np.cos(lat1r) * np.cos(lat2r) * np.sin(dlon / 2) ** 2)
+    return 2 * R * np.arcsin(np.sqrt(a))
+
+
+st.markdown("---")
+st.subheader("🔴 LIVE — Latest Regional Activity")
+
+# Today's daily budget per oblast is drawn from THIS week's locked snapshot
+# (auto-locked on Monday). We split the weekly budget evenly across 7 days as
+# a baseline; per-day weighting could refine this later.
+_snap_row = None
+with db_connect() as conn:
+    _snap_row = conn.execute(
+        "SELECT id, weekly_budget FROM snapshots WHERE week_start = ? "
+        "ORDER BY id DESC LIMIT 1",
+        (week_start.date().isoformat(),),
+    ).fetchone()
+_week_budget = _snap_row[1] if _snap_row else 1300
+_daily_budget = _week_budget / 7.0
+
+# lat/lon + share for each oblast (structural forecast)
+_oblasts_geo = pd.read_csv(DATA_DIR / "updated_forecast.csv")[
+    ['oblast', 'lat', 'lon', 'share']
+].copy()
+_oblasts_geo['today_budget'] = _oblasts_geo['share'] * _daily_budget
+
+# Region filter — empty = show everything
+_all_regions = sorted(observations['oblast'].dropna().unique().tolist())
+_sel_regions = st.multiselect(
+    "Filter regions (empty = all)", _all_regions, default=[],
+    help="Narrow the table + bar chart to specific oblasts.",
+    key='live_region_filter',
+)
+
+# Per-oblast: most recent observation date, and today's actual count
+_latest_by_oblast = (
+    observations.groupby('oblast')['observation_date'].max().reset_index()
+    .rename(columns={'observation_date': 'last_hit'})
+)
+_latest_by_oblast = _latest_by_oblast.merge(_oblasts_geo, on='oblast', how='left')
+
+_latest_date_overall = observations['observation_date'].max()
+_todays = (
+    observations[observations['observation_date'] == _latest_date_overall]
+    .groupby('oblast')['observed_drones'].sum().reset_index()
+    .rename(columns={'observed_drones': 'actual_today'})
+)
+_panel = _latest_by_oblast.merge(_todays, on='oblast', how='left').fillna(
+    {'actual_today': 0}
+)
+_panel['delta'] = _panel['actual_today'] - _panel['today_budget']
+_panel['days_since_hit'] = (today - _panel['last_hit']).dt.days
+
+if _sel_regions:
+    _panel = _panel[_panel['oblast'].isin(_sel_regions)]
+
+# Sort by most-recent-hit desc, then by today's actual desc
+_panel = _panel.sort_values(['last_hit', 'actual_today'], ascending=[False, False])
+
+_col_tbl, _col_bar = st.columns([2, 1])
+with _col_tbl:
+    st.markdown(
+        f"**Latest observation:** {_latest_date_overall.date()} · "
+        f"**Today's per-day budget:** {_daily_budget:.0f} drones · "
+        f"**Week snapshot:** #{_snap_row[0] if _snap_row else '—'} "
+        f"({_week_budget}/wk)"
+    )
+    _display = _panel.copy()
+    _display['last_hit'] = _display['last_hit'].dt.date
+    _display = _display[
+        ['oblast', 'last_hit', 'days_since_hit',
+         'actual_today', 'today_budget', 'delta']
+    ]
+    _display.columns = [
+        'Region', 'Last hit', 'Days since',
+        'Actual today', 'Budget today', 'Δ (act−bud)',
+    ]
+    _display['Budget today'] = _display['Budget today'].round(1)
+    _display['Δ (act−bud)'] = _display['Δ (act−bud)'].round(1)
+    st.dataframe(_display, use_container_width=True, hide_index=True)
+
+with _col_bar:
+    if len(_panel):
+        _top = _panel.iloc[0]
+        _fig_l, _ax_l = plt.subplots(figsize=(4, 3))
+        _vals = [float(_top['actual_today']), float(_top['today_budget'])]
+        _bars = _ax_l.bar(['Actual', 'Budget'], _vals,
+                          color=['#cc0033', '#003d7a'])
+        _ax_l.set_title(f"{_top['oblast']} — today", fontsize=11)
+        _ax_l.set_ylabel('drones')
+        _ax_l.grid(alpha=0.25, axis='y')
+        for _b, _v in zip(_bars, _vals):
+            _ax_l.text(_b.get_x() + _b.get_width() / 2, _b.get_height(),
+                       f"{_v:.0f}", ha='center', va='bottom', fontsize=10)
+        st.pyplot(_fig_l)
+        plt.close(_fig_l)
+
+# Distance table: pairwise great-circle distance between successive
+# latest-hit regions (most recent → older).
+_geo_panel = _panel.dropna(subset=['lat', 'lon']).reset_index(drop=True)
+if len(_geo_panel) >= 2:
+    _dists = []
+    for _i in range(1, len(_geo_panel)):
+        _a = _geo_panel.iloc[_i - 1]
+        _b = _geo_panel.iloc[_i]
+        _dists.append({
+            'From': _a['oblast'],
+            'To': _b['oblast'],
+            'Distance (km)': int(round(_haversine_km(
+                _a['lat'], _a['lon'], _b['lat'], _b['lon']))),
+        })
+    st.caption("**Distance between successive latest-hit regions** "
+               "(great-circle, ordered most-recent → older)")
+    st.dataframe(pd.DataFrame(_dists), use_container_width=True,
+                 hide_index=True)
+
+st.markdown("---")
+
 # Official UA Air Force daily counts (when available)
 if not daily_totals.empty:
     dt = daily_totals.copy()

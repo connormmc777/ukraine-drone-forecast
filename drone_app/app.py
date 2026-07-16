@@ -818,6 +818,53 @@ with _col_bar:
         st.pyplot(_fig_l)
         plt.close(_fig_l)
 
+# ---------- Per-message drone-track alerts (minute-fresh) ----------
+# One row per @kpszsu Telegram post, timestamped by the original post time.
+# Powers the "what's happening RIGHT NOW" view — separate from the nightly
+# summary aggregate above.
+_SIGHTINGS_CSV = DATA_DIR / 'drone_sightings.csv'
+if _SIGHTINGS_CSV.exists():
+    try:
+        _sight = pd.read_csv(_SIGHTINGS_CSV)
+        if not _sight.empty:
+            _sight['posted_at'] = pd.to_datetime(_sight['posted_at'], utc=True,
+                                                 errors='coerce')
+            _sight = _sight.dropna(subset=['posted_at']).sort_values(
+                'posted_at', ascending=False
+            )
+            if _sel_regions:
+                _sight = _sight[_sight['oblast'].isin(_sel_regions)]
+            _now_utc = pd.Timestamp.utcnow()
+            _sight['age'] = _now_utc - _sight['posted_at']
+
+            def _age_str(td):
+                s = td.total_seconds()
+                if s < 90:
+                    return f"{int(s)}s ago"
+                if s < 3600:
+                    return f"{int(s // 60)}m ago"
+                if s < 86400:
+                    return f"{int(s // 3600)}h ago"
+                return f"{int(s // 86400)}d ago"
+
+            _sight['ago'] = _sight['age'].apply(_age_str)
+            _display_s = _sight.head(15)[
+                ['ago', 'oblast', 'text', 'posted_at']
+            ].copy()
+            _display_s.columns = ['Age', 'Region', 'Message', 'Posted (UTC)']
+            _display_s['Posted (UTC)'] = _display_s['Posted (UTC)'].dt.strftime(
+                '%Y-%m-%d %H:%M:%S'
+            )
+            st.caption(
+                "**Live drone-track alerts** — one row per @kpszsu Telegram "
+                "post, timestamped when the source posted (not aggregated). "
+                f"Showing 15 most recent of {len(_sight):,} in log. Region "
+                "filter above applies."
+            )
+            st.dataframe(_display_s, use_container_width=True, hide_index=True)
+    except Exception as _sight_e:
+        st.caption(f"(sightings log unavailable: {type(_sight_e).__name__})")
+
 # Distance table: pairwise great-circle distance between successive
 # latest-hit regions (most recent → older).
 _geo_panel = _panel.dropna(subset=['lat', 'lon']).reset_index(drop=True)

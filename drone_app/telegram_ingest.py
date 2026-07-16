@@ -377,6 +377,63 @@ def messages_to_observation_rows(messages: list[dict]) -> tuple[pd.DataFrame, li
     return agg[['observation_date', 'oblast', 'observed_drones', 'source']], unmatched
 
 
+def messages_to_sightings_log(messages: list[dict]) -> pd.DataFrame:
+    """One row per drone message with the ORIGINAL timestamp preserved
+    (unlike messages_to_observation_rows which aggregates to per-night counts).
+
+    Feeds the live "recent drone-track alerts" panel — where 'live' means
+    minute-fresh per-message, not per-night aggregate."""
+    rows = []
+    for m in messages:
+        if not is_drone_message(m['text']):
+            continue
+        if _SUMMARY_HEADLINE.search(m['text'][:200]):
+            continue
+        obs = extract_oblasts(m['text'])
+        row = {
+            'message_id': int(m['id']),
+            'posted_at': m['datetime'].isoformat() if m['datetime'] else None,
+            'oblast': obs[0] if obs else 'UNKNOWN',
+            'all_oblasts': ','.join(obs) if obs else '',
+            'text': (m['text'] or '')[:400].replace('\n', ' ').strip(),
+        }
+        rows.append(row)
+    return pd.DataFrame(rows, columns=[
+        'message_id', 'posted_at', 'oblast', 'all_oblasts', 'text',
+    ])
+
+
+def upsert_sightings(new_rows: pd.DataFrame, csv_path) -> tuple[int, int]:
+    """Merge per-message sightings idempotently on message_id.
+    Returns (added, updated)."""
+    from pathlib import Path
+    csv_path = Path(csv_path)
+    cols = ['message_id', 'posted_at', 'oblast', 'all_oblasts', 'text']
+    if csv_path.exists():
+        existing = pd.read_csv(csv_path)
+        for c in cols:
+            if c not in existing.columns:
+                existing[c] = None
+        existing = existing[cols]
+    else:
+        existing = pd.DataFrame(columns=cols)
+
+    if new_rows.empty:
+        return 0, 0
+
+    existing_ids = set(existing['message_id'].astype(int).tolist()) if not existing.empty else set()
+    new_ids = set(new_rows['message_id'].astype(int).tolist())
+    added = len(new_ids - existing_ids)
+    updated = len(new_ids & existing_ids)
+
+    # Replace overlapping rows with the fresh copy so text corrections propagate.
+    kept = existing[~existing['message_id'].astype(int).isin(new_ids)]
+    combined = pd.concat([kept, new_rows], ignore_index=True)
+    combined = combined.sort_values('posted_at', ascending=False)
+    combined.to_csv(csv_path, index=False)
+    return added, updated
+
+
 def merge_into_observations(new_rows: pd.DataFrame, csv_path) -> tuple[int, int]:
     """Idempotent merge: (date, oblast, source) is the unique key. Re-fetching
     the same window updates existing rows in place."""
@@ -475,6 +532,19 @@ def sync(observations_csv, daily_totals_csv=None, pages: int = 12) -> dict:
     rows, unmatched = messages_to_observation_rows(messages)
     added, updated = merge_into_observations(rows, observations_csv)
 
+    # Per-message sightings log — one row per Telegram post with the ORIGINAL
+    # timestamp preserved. Powers the live drone-track alerts panel.
+    sightings_added = sightings_updated = 0
+    try:
+        from pathlib import Path as _Path
+        _sightings_csv = _Path(observations_csv).parent / 'drone_sightings.csv'
+        sightings_df = messages_to_sightings_log(messages)
+        sightings_added, sightings_updated = upsert_sightings(
+            sightings_df, _sightings_csv
+        )
+    except Exception:
+        pass  # never fail the main sync if sightings-log has an issue
+
     summaries = []
     for m in messages:
         s = parse_summary(m)
@@ -529,6 +599,8 @@ def sync(observations_csv, daily_totals_csv=None, pages: int = 12) -> dict:
         'summary_rows_updated': summary_updated,
         'launch_site_rows_added': ls_added,
         'launch_site_rows_updated': ls_updated,
+        'sightings_rows_added': sightings_added,
+        'sightings_rows_updated': sightings_updated,
         'weekly_ledger_update': weekly_update,
         'unmatched_messages': unmatched[:8],  # cap UI clutter
         'date_range': (

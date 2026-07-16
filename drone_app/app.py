@@ -770,8 +770,58 @@ _todays = (
 _panel = _latest_by_oblast.merge(_todays, on='oblast', how='left').fillna(
     {'actual_today': 0}
 )
-_panel['delta'] = _panel['actual_today'] - _panel['today_budget']
 _panel['days_since_hit'] = (today - _panel['last_hit']).dt.days
+
+# ---- Calibration state: is Actual in "drones" units or raw "sightings"? ----
+# When the morning summary has landed for the latest observation date, the
+# observations are already scaled to the summary total → real drone counts.
+# Otherwise the counts are raw sighting posts, and each drone appears in
+# multiple posts as it crosses oblasts. We reverse-engineer the multiplier
+# from historical nights where BOTH metrics exist.
+def _sighting_to_drone_ratio(_obs_df, _daily_df):
+    if _daily_df.empty:
+        return None
+    _pn = _obs_df.groupby(_obs_df['observation_date'].dt.date)['observed_drones'].sum()
+    _d = _daily_df.copy()
+    _d['date'] = pd.to_datetime(_d['date']).dt.date
+    _dn = _d.groupby('date')['launched'].sum()
+    _m = pd.DataFrame({'sightings': _pn, 'launched': _dn}).dropna()
+    _m = _m[_m['launched'] > 0]
+    if len(_m) < 5:
+        return None
+    _r = _m['launched'] / _m['sightings']
+    return {'median': float(_r.median()),
+            'p25': float(_r.quantile(0.25)),
+            'p75': float(_r.quantile(0.75)),
+            'n': int(len(_m))}
+
+_ratio_stats = _sighting_to_drone_ratio(observations, daily_totals)
+_summary_landed = False
+if not daily_totals.empty:
+    _daily_dates = set(pd.to_datetime(daily_totals['date']).dt.date.tolist())
+    _summary_landed = _latest_date_overall.date() in _daily_dates
+
+# Estimated actual (drone units) — same as raw if calibrated, else × median
+if _summary_landed or _ratio_stats is None:
+    _panel['est_actual'] = _panel['actual_today'].astype(float)
+    _panel['est_low'] = _panel['est_actual']
+    _panel['est_high'] = _panel['est_actual']
+else:
+    _panel['est_actual'] = _panel['actual_today'] * _ratio_stats['median']
+    _panel['est_low'] = _panel['actual_today'] * _ratio_stats['p25']
+    _panel['est_high'] = _panel['actual_today'] * _ratio_stats['p75']
+
+# Volume delta (only interpretable when calibrated)
+_panel['delta_vol'] = _panel['est_actual'] - _panel['today_budget']
+
+# Spatial-share delta (unit-free — meaningful even with raw sightings, since
+# both actual and predicted are shares of tonight's total)
+_tonight_total = float(_panel['actual_today'].sum())
+if _tonight_total > 0:
+    _panel['actual_share'] = _panel['actual_today'] / _tonight_total
+else:
+    _panel['actual_share'] = 0.0
+_panel['delta_share_pp'] = (_panel['actual_share'] - _panel['share']) * 100.0
 
 if _sel_regions:
     _panel = _panel[_panel['oblast'].isin(_sel_regions)]
@@ -788,28 +838,78 @@ with _col_tbl:
         f"**Week snapshot:** #{_snap_row[0] if _snap_row else '—'} "
         f"({_week_budget}/wk)"
     )
+
+    # Calibration state banner — one line explaining what units 'Actual' is in
+    if _summary_landed:
+        st.success(
+            "🟢 **Calibrated** — Actual counts are rescaled to match "
+            f"tonight's UA Air Force morning summary total. "
+            "'Actual' and 'Budget' are in the same units (drones)."
+        )
+    elif _ratio_stats:
+        st.warning(
+            f"🟡 **Uncalibrated — morning summary pending.** Actual counts "
+            f"are raw sighting posts (each drone can appear in several). "
+            f"Historical median: **1 sighting ≈ {_ratio_stats['median']:.2f} "
+            f"drones** (IQR {_ratio_stats['p25']:.2f}–{_ratio_stats['p75']:.2f}, "
+            f"n = {_ratio_stats['n']} nights). The 'Est drones' column applies "
+            f"the median so it's comparable to 'Budget'. When the morning "
+            f"summary lands (~06:00 Kyiv) this rescales automatically."
+        )
+    else:
+        st.warning(
+            "🟡 **Uncalibrated & no historical ratio yet** — Actual is raw "
+            "sighting posts. Not directly comparable to Budget."
+        )
+
     _display = _panel.copy()
     _display['last_hit'] = _display['last_hit'].dt.date
-    _display = _display[
-        ['oblast', 'last_hit', 'days_since_hit',
-         'actual_today', 'today_budget', 'delta']
+    _cols_out = [
+        'oblast', 'last_hit', 'days_since_hit',
+        'actual_today', 'est_actual', 'today_budget',
+        'delta_vol', 'delta_share_pp',
     ]
+    _display = _display[_cols_out]
+    _actual_label = 'Actual (drones)' if _summary_landed \
+                    else 'Actual (sightings)'
     _display.columns = [
         'Region', 'Last hit', 'Days since',
-        'Actual today', 'Budget today', 'Δ (act−bud)',
+        _actual_label, 'Est drones', 'Budget today',
+        'Δ volume', 'Δ share (pp)',
     ]
+    _display['Est drones'] = _display['Est drones'].round(1)
     _display['Budget today'] = _display['Budget today'].round(1)
-    _display['Δ (act−bud)'] = _display['Δ (act−bud)'].round(1)
+    _display['Δ volume'] = _display['Δ volume'].round(1)
+    _display['Δ share (pp)'] = _display['Δ share (pp)'].round(2)
     st.dataframe(_display, use_container_width=True, hide_index=True)
+    st.caption(
+        "**Δ volume** = Est drones − Budget (in drone units, meaningful once "
+        "calibrated). **Δ share (pp)** = actual share of tonight's total "
+        "− predicted share, in percentage points — this is UNIT-FREE and "
+        "meaningful even before the morning summary lands. Positive = region "
+        "is over-represented tonight vs the structural prior."
+    )
 
 with _col_bar:
     if len(_panel):
         _top = _panel.iloc[0]
         _fig_l, _ax_l = plt.subplots(figsize=(4, 3))
-        _vals = [float(_top['actual_today']), float(_top['today_budget'])]
-        _bars = _ax_l.bar(['Actual', 'Budget'], _vals,
+        # Use est_actual so bars are always in drone units (apples-to-apples
+        # with Budget). When calibrated est_actual == actual_today.
+        _act_val = float(_top['est_actual'])
+        _bud_val = float(_top['today_budget'])
+        _vals = [_act_val, _bud_val]
+        _bars = _ax_l.bar(['Est actual', 'Budget'], _vals,
                           color=['#cc0033', '#003d7a'])
-        _ax_l.set_title(f"{_top['oblast']} — today", fontsize=11)
+        # IQR error bar on the estimated actual (only visible when uncalibrated)
+        if not _summary_landed and _ratio_stats:
+            _lo = float(_top['est_low'])
+            _hi = float(_top['est_high'])
+            _ax_l.errorbar([0], [_act_val],
+                            yerr=[[_act_val - _lo], [_hi - _act_val]],
+                            fmt='none', color='black', capsize=6, linewidth=1.2)
+        _cal_tag = 'calibrated' if _summary_landed else 'ratio-estimated'
+        _ax_l.set_title(f"{_top['oblast']} — today ({_cal_tag})", fontsize=10)
         _ax_l.set_ylabel('drones')
         _ax_l.grid(alpha=0.25, axis='y')
         for _b, _v in zip(_bars, _vals):

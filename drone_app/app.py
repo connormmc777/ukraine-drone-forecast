@@ -646,26 +646,68 @@ week_start = today - timedelta(days=today.weekday())
 this_week_obs = observations[observations['observation_date'] >= week_start]
 launches_this_week = int(this_week_obs['observed_drones'].sum())
 
-# Freshness banner: how stale is the observation log?
+# Freshness banner: how stale is the OBSERVATION LOG (data coverage) vs
+# how recently did we SYNC (data pull).
+#
+# Data-source note: UA Air Force @kpszsu posts ONE morning summary per day
+# covering the previous night. So `last_obs_date` = yesterday is EXPECTED
+# most of the day — that's not stale, that's the source's cadence.
+# The sync loop pulls every 60s and normally catches the morning summary
+# within a minute of it being posted (~06:00 Kyiv).
 last_obs_date = (
     observations['observation_date'].max().date()
     if len(observations) else None
 )
+_tg_last = load_tg_sync_log() or {}
+_last_sync_at = _tg_last.get('at')
+if _last_sync_at:
+    try:
+        _last_sync_dt = datetime.fromisoformat(_last_sync_at)
+        _sync_age = datetime.now() - _last_sync_dt
+        if _sync_age.total_seconds() < 90:
+            _sync_ago = f"{int(_sync_age.total_seconds())}s ago"
+        elif _sync_age.total_seconds() < 3600:
+            _sync_ago = f"{int(_sync_age.total_seconds() // 60)}m ago"
+        elif _sync_age.total_seconds() < 86400:
+            _sync_ago = f"{int(_sync_age.total_seconds() // 3600)}h ago"
+        else:
+            _sync_ago = f"{int(_sync_age.total_seconds() // 86400)}d ago"
+    except Exception:
+        _sync_ago = "unknown"
+else:
+    _sync_ago = "never"
+
 if last_obs_date is None:
     st.error("⚠️ No observations on file. Predictions are pure prior — α=0. "
              "Sync ACLED from the sidebar or add observations manually.")
 else:
     days_stale = (today.date() - last_obs_date).days
-    if days_stale >= 2:
-        st.warning(
-            f"⚠️ Last observation is from **{last_obs_date}** "
-            f"({days_stale} days ago). The model can't tell 'ceasefire holding' "
-            f"from 'nobody fed it data' — both look like zero. "
-            f"Sync ACLED from the sidebar to refresh."
+    # UA Air Force posts the previous night's summary each morning ~06:00 Kyiv.
+    # So an obs dated "today" or "yesterday" is fresh, "2+ days" is stale.
+    if days_stale >= 3:
+        st.error(
+            f"🛑 Observation log covers up to **{last_obs_date}** "
+            f"({days_stale} days behind). Sync last ran {_sync_ago}. "
+            f"Either the source stopped posting or the sync loop is broken — "
+            f"check `kubectl logs -l app.kubernetes.io/name=dronespredictions "
+            f"-c sync-loop` for errors."
         )
-    elif days_stale == 1:
-        st.info(f"Last observation: {last_obs_date} (yesterday). "
-                f"Sync ACLED for today's events.")
+    elif days_stale == 2:
+        st.warning(
+            f"⚠️ Observation log covers up to **{last_obs_date}** "
+            f"(2 nights ago). Sync last ran {_sync_ago}. This is unusual — "
+            f"the UA Air Force normally posts a morning summary daily."
+        )
+    else:
+        # 0 or 1 days stale is the source's normal cadence. Green banner.
+        _obs_desc = "tonight's summary is in" if days_stale == 0 \
+                    else "last night's summary is the most recent"
+        st.success(
+            f"✅ Data current — {_obs_desc} (**{last_obs_date}**). "
+            f"Sync last ran **{_sync_ago}** (loop polls every 60s). "
+            f"The UA Air Force posts once per day at ~06:00 Kyiv, so "
+            f"'yesterday' is normal until the next morning's report drops."
+        )
 
 # ============== LIVE — LATEST REGIONAL ACTIVITY (top-of-page) ==============
 # Refreshes on every autorefresh tick. Shows the newest per-oblast counts,
@@ -740,7 +782,8 @@ _panel = _panel.sort_values(['last_hit', 'actual_today'], ascending=[False, Fals
 _col_tbl, _col_bar = st.columns([2, 1])
 with _col_tbl:
     st.markdown(
-        f"**Latest observation:** {_latest_date_overall.date()} · "
+        f"**Report covers:** night of {_latest_date_overall.date()} · "
+        f"**Sync last ran:** {_sync_ago} (polls every 60s) · "
         f"**Today's per-day budget:** {_daily_budget:.0f} drones · "
         f"**Week snapshot:** #{_snap_row[0] if _snap_row else '—'} "
         f"({_week_budget}/wk)"

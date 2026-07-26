@@ -115,18 +115,24 @@ def _mtime(path: Path) -> float:
     return path.stat().st_mtime if path.exists() else 0.0
 
 
-@st.cache_data
-def load_oblasts(_mtime_key: float):
+# NB: the mtime_key argument MUST NOT start with an underscore. Streamlit's
+# @st.cache_data treats leading-underscore args as "unhashable" and skips
+# them for cache-key computation — which means the cache never invalidates
+# on file changes and every render serves whatever was cached at process
+# start. The ttl is a belt-and-suspenders: even if a caller forgets to pass
+# a fresh mtime, the cache expires within 60s.
+@st.cache_data(ttl=60)
+def load_oblasts(mtime_key: float):
     return pd.read_csv(DATA_DIR / "oblast_features.csv")
 
 
-@st.cache_data
-def load_observations(_mtime_key: float):
+@st.cache_data(ttl=60)
+def load_observations(mtime_key: float):
     return pd.read_csv(DATA_DIR / "observations.csv")
 
 
-@st.cache_data
-def load_daily_totals(_mtime_key: float):
+@st.cache_data(ttl=60)
+def load_daily_totals(mtime_key: float):
     if DAILY_TOTALS_CSV.exists():
         return pd.read_csv(DAILY_TOTALS_CSV)
     return pd.DataFrame(columns=['date', 'period', 'launched', 'intercepted',

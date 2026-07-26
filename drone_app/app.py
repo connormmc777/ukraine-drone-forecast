@@ -4112,3 +4112,13 @@ st.caption(
     "scored against the observations log to track accuracy over time. "
     "Built with Claude on May 13, 2026."
 )
+
+# ============== TEARDOWN ==============
+# Streamlit reruns this script on every autorefresh tick (~30s). Matplotlib
+# figures created with plt.subplots() stay alive in the pyplot state machine
+# until explicitly closed — st.pyplot() serializes the figure to PNG and
+# returns, but does NOT close it. 15 open figures * 30s render loop =
+# ~50MB/min of leaked figure state, which is why the app container was
+# OOMKilled every few hours at 4Gi. plt.close('all') here releases every
+# figure at the end of each rerun.
+plt.close('all')

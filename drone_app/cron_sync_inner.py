@@ -14,6 +14,7 @@ os.chdir(project_dir)
 sys.path.insert(0, project_dir)
 
 import telegram_ingest as ti
+import naval_ingest as ni
 
 
 def main() -> int:
@@ -34,6 +35,21 @@ def main() -> int:
             print(f"  launch sites: +{result.get('launch_site_rows_added', 0)} new, "
                   f"{result.get('launch_site_rows_updated', 0)} updated")
             print(f"  date range:   {result['date_range']}")
+
+            # ---- Naval ingest (Ukraine → Russia USV strikes) ----
+            # Sibling pipeline; fewer, higher-value events. Never fails the
+            # main sync — a broken naval scraper must not stop air data.
+            try:
+                nres = ni.sync('data/naval_events.csv', pages=8)
+                with open('data/.naval_sync_log.json', 'w') as f:
+                    json.dump(nres, f, default=str)
+                print(f"  naval:        +{nres['events_added']} new, "
+                      f"{nres['events_updated']} updated  "
+                      f"(source: @{nres['channel']}, {nres['messages_seen']} msgs seen)")
+            except Exception as ne:
+                print(f"  naval sync soft-failed: {type(ne).__name__}: {ne}",
+                      file=sys.stderr)
+
             return 0
         except Exception as e:
             last_err = e

@@ -1,0 +1,11 @@
+target,lat,lon,distance_odesa_km,distance_ochakiv_km,fleet_ships_est,defense_score,notes
+Sevastopol,44.617,33.525,304,275,25,10,"Main Black Sea Fleet HQ. Heavy air/coastal defense. Primary target of Magura V5 raids."
+Novorossiysk,44.723,37.767,595,565,15,8,"Alternate BSF base after fleet retreat from Sevastopol. Further from launch, harder run."
+Feodosia,45.031,35.383,275,245,4,6,"Fuel depot + patrol boat base. Struck repeatedly 2024-2025."
+Kerch Strait,45.350,36.500,405,375,5,9,"Kerch bridge + naval choke point. Ferry crossing. Highly defended."
+Yalta,44.500,34.170,325,295,2,5,"Small port, occasional patrol boat presence."
+Balaklava,44.500,33.600,290,260,3,7,"Submarine base cove. Historic + still active."
+Anapa,44.900,37.317,555,525,3,4,"Coastal training area, minor naval presence."
+Tuapse,44.100,39.083,700,670,2,3,"Deep-water port, occasional refuelling stop."
+Sochi,43.600,39.733,760,730,1,3,"Presidential summer area, minor naval presence."
+Odesa,46.483,30.733,0,60,0,0,"Ukrainian launch point — reference only, not a target."

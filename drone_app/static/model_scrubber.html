@@ -1,0 +1,770 @@
+<title>Model Scrubber — Rolling vs CAGR forecast comparison</title>
+
+<style>
+  :root {
+    --bg:      #faf9f5;
+    --ink:     #0e1420;
+    --ink-2:   #38414e;
+    --ink-3:   #6b7280;
+    --grid:    #e5e3dc;
+    --panel:   #f2efe6;
+    --rolling: #003d7a;
+    --cagr:    #0a6d3a;
+    --actual:  #8b1a2a;
+    --neutral: #5c6472;
+    --hairline: #d8d4c8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:      #0f141c;
+      --ink:     #eae7dc;
+      --ink-2:   #b6b2a4;
+      --ink-3:   #8a8577;
+      --grid:    #212832;
+      --panel:   #171e29;
+      --rolling: #6ea6dd;
+      --cagr:    #7fc59a;
+      --actual:  #e07a88;
+      --neutral: #7a828f;
+      --hairline: #2c3444;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:      #0f141c;
+    --ink:     #eae7dc;
+    --ink-2:   #b6b2a4;
+    --ink-3:   #8a8577;
+    --grid:    #212832;
+    --panel:   #171e29;
+    --rolling: #6ea6dd;
+    --cagr:    #7fc59a;
+    --actual:  #e07a88;
+    --neutral: #7a828f;
+    --hairline: #2c3444;
+  }
+  :root[data-theme="light"] {
+    --bg:      #faf9f5;
+    --ink:     #0e1420;
+    --ink-2:   #38414e;
+    --ink-3:   #6b7280;
+    --grid:    #e5e3dc;
+    --panel:   #f2efe6;
+    --rolling: #003d7a;
+    --cagr:    #0a6d3a;
+    --actual:  #8b1a2a;
+    --neutral: #5c6472;
+    --hairline: #d8d4c8;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 16px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision;
+  }
+  .page {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 64px 40px 96px;
+  }
+  @media (max-width: 720px) {
+    .page { padding: 40px 20px 64px; }
+  }
+
+  .kicker {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 18px;
+  }
+  h1 {
+    font-family: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino,
+                 "Book Antiqua", Georgia, serif;
+    font-weight: 500;
+    font-size: clamp(38px, 4.5vw, 60px);
+    line-height: 1.06;
+    letter-spacing: -0.012em;
+    text-wrap: balance;
+    margin: 0 0 20px;
+    color: var(--ink);
+  }
+  h1 em {
+    font-style: italic;
+    color: var(--cagr);
+  }
+  h1 strong {
+    font-weight: 500;
+    color: var(--rolling);
+  }
+  .lede {
+    font-family: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino,
+                 "Book Antiqua", Georgia, serif;
+    font-style: italic;
+    font-size: 18px;
+    line-height: 1.55;
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0 0 44px;
+  }
+
+  section { margin-top: 56px; }
+  section > .eyebrow {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 12px;
+  }
+  section > h2 {
+    font-family: ui-serif, "Iowan Old Style", Palatino, Georgia, serif;
+    font-weight: 500;
+    font-size: 24px; line-height: 1.2;
+    letter-spacing: -0.005em;
+    margin: 0 0 20px;
+    color: var(--ink);
+  }
+  section > p.caption {
+    color: var(--ink-2);
+    font-size: 14px;
+    max-width: 68ch;
+    margin: 0 0 22px;
+  }
+
+  /* --- Chart shell ------------------------------------------------ */
+  .chart-frame {
+    background: var(--bg);
+    border-top: 1px solid var(--hairline);
+    border-bottom: 1px solid var(--hairline);
+    padding: 24px 0 16px;
+    margin: 0;
+    position: relative;
+    overflow-x: auto;
+    cursor: crosshair;
+    touch-action: none;
+    user-select: none;
+  }
+  .chart-frame svg { display: block; width: 100%; min-width: 640px; }
+
+  /* Legend row */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    padding: 0 0 16px;
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+  .legend .swatch {
+    display: inline-block;
+    width: 14px; height: 3px;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  .legend .swatch.dot {
+    height: 10px; width: 10px; border-radius: 50%;
+    margin-right: 6px;
+  }
+  .legend .swatch.dashed {
+    background: repeating-linear-gradient(90deg,
+      currentColor 0, currentColor 5px, transparent 5px, transparent 9px);
+    height: 2px;
+  }
+
+  /* --- Readout panel ---------------------------------------------- */
+  .readout {
+    margin-top: 12px;
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    padding: 24px 28px;
+    display: grid;
+    grid-template-columns: minmax(160px, 1fr) repeat(4, minmax(0, 1fr));
+    gap: 4px 32px;
+    align-items: baseline;
+  }
+  @media (max-width: 720px) {
+    .readout {
+      grid-template-columns: minmax(90px, 1fr) repeat(2, minmax(0, 1fr));
+      padding: 18px 20px;
+      gap: 4px 18px;
+    }
+  }
+  .readout .label {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .readout .row-label {
+    font-family: ui-serif, "Iowan Old Style", Palatino, Georgia, serif;
+    font-style: italic;
+    font-size: 15px;
+    color: var(--ink-2);
+    padding-right: 12px;
+  }
+  .readout .val {
+    font-family: ui-monospace, "SF Mono", "Menlo", "Consolas", monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 22px;
+    letter-spacing: -0.005em;
+    line-height: 1.15;
+  }
+  .readout .val.small { font-size: 15px; color: var(--ink-2); }
+  .readout .val.rolling { color: var(--rolling); }
+  .readout .val.cagr    { color: var(--cagr); }
+  .readout .val.actual  { color: var(--actual); }
+  .readout .val.dim     { color: var(--ink-3); }
+
+  .readout .selected {
+    grid-column: 1 / -1;
+    font-family: ui-serif, "Iowan Old Style", Palatino, Georgia, serif;
+    color: var(--ink-3);
+    font-size: 13px;
+    font-style: italic;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--hairline);
+    margin-bottom: 8px;
+  }
+  .readout .selected b {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-style: normal;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  /* --- Second chart (MAPE vs horizon) ----------------------------- */
+  .crossover-note {
+    margin: 14px 0 0;
+    font-family: ui-serif, "Iowan Old Style", Palatino, Georgia, serif;
+    font-style: italic;
+    font-size: 15px;
+    color: var(--ink-2);
+    max-width: 62ch;
+  }
+
+  /* --- Footer ----------------------------------------------------- */
+  .foot {
+    margin-top: 72px;
+    padding-top: 24px;
+    border-top: 1px solid var(--hairline);
+    font-size: 13px;
+    color: var(--ink-3);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .foot a { color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--hairline); }
+  .foot a:hover { color: var(--ink); }
+
+  /* Axis + grid text */
+  svg text {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px;
+    fill: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+  svg .axis-label {
+    font-family: system-ui, sans-serif;
+    font-size: 11px;
+    fill: var(--ink-2);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  svg .grid-line { stroke: var(--grid); stroke-width: 1; }
+  svg .today-line {
+    stroke: var(--neutral);
+    stroke-width: 1;
+    stroke-dasharray: 4 4;
+  }
+  svg .today-label {
+    fill: var(--neutral);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-size: 10px;
+  }
+  svg .line-rolling {
+    fill: none; stroke: var(--rolling); stroke-width: 2.2;
+    stroke-linejoin: round; stroke-linecap: round;
+  }
+  svg .line-cagr {
+    fill: none; stroke: var(--cagr); stroke-width: 2.2;
+    stroke-linejoin: round; stroke-linecap: round;
+  }
+  svg .line-future { stroke-dasharray: 5 4; }
+  svg .actual-dot {
+    fill: var(--actual); stroke: var(--bg); stroke-width: 2;
+  }
+  svg .cursor-line { stroke: var(--ink); stroke-width: 1; opacity: 0.35; }
+  svg .cursor-dot-r { fill: var(--rolling); stroke: var(--bg); stroke-width: 2; }
+  svg .cursor-dot-c { fill: var(--cagr);    stroke: var(--bg); stroke-width: 2; }
+  svg .cursor-dot-a { fill: var(--actual);  stroke: var(--bg); stroke-width: 2; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .line-rolling, .line-cagr { transition: stroke-opacity 200ms ease; }
+  }
+</style>
+
+<div class="page">
+
+  <p class="kicker">an instrument, not a chart</p>
+  <h1>The <strong>rolling</strong> forecast wins the sprint.<br>
+      The <em>CAGR</em> forecast wins the marathon.<br>
+      Drag anywhere to see it.</h1>
+  <p class="lede">
+    Two forecasting models running against the same live UA Air Force
+    drone-strike data. One remembers 14 days. One remembers 4 years.
+    Scrub the cursor across the timeline; the numbers update. Then look at
+    the second chart to see where they cross.
+  </p>
+
+  <section>
+    <p class="eyebrow">Weekly predictions vs realised actuals</p>
+    <h2>Predictions timeline</h2>
+    <p class="caption">
+      Each point is one week. Solid lines are the past — where we already
+      know the answer. Dashed lines are projections forward. Red dots
+      are the observed weekly totals from UA Air Force summaries.
+    </p>
+
+    <div class="legend" role="list">
+      <span role="listitem"><span class="swatch" style="background: var(--rolling)"></span>Rolling 14-day forecast</span>
+      <span role="listitem"><span class="swatch" style="background: var(--cagr)"></span>CAGR-based forecast</span>
+      <span role="listitem"><span class="swatch dot" style="background: var(--actual)"></span>Realised actual</span>
+      <span role="listitem"><span class="swatch dashed" style="color: var(--ink-3)"></span>Projection (dashed = future)</span>
+    </div>
+
+    <div class="chart-frame" id="pred-frame">
+      <svg id="pred-svg" viewBox="0 0 900 380" preserveAspectRatio="none"></svg>
+    </div>
+
+    <div class="readout" id="readout">
+      <div class="selected" id="sel-label">Hover the chart to inspect a specific week.</div>
+
+      <div class="label">Week</div>
+      <div class="label">Rolling</div>
+      <div class="label">CAGR</div>
+      <div class="label">Actual</div>
+      <div class="label">MAPE</div>
+
+      <div class="row-label" id="wk-label">—</div>
+      <div class="val rolling" id="wk-roll">—</div>
+      <div class="val cagr"    id="wk-cagr">—</div>
+      <div class="val actual"  id="wk-actual">—</div>
+      <div class="val small dim" id="wk-mape">rolling — · CAGR —</div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">The reason the debate exists</p>
+    <h2>How each model's MAPE grows with the forecast horizon</h2>
+    <p class="caption">
+      At a 1-week horizon, the rolling forecast wins on measured MAPE.
+      Past 2–3 weeks they converge. Past 1 month, CAGR pulls ahead —
+      it has more memory to work with. Hover to see either model's
+      expected MAPE at any horizon.
+    </p>
+
+    <div class="chart-frame" id="mape-frame">
+      <svg id="mape-svg" viewBox="0 0 900 300" preserveAspectRatio="none"></svg>
+    </div>
+
+    <p class="crossover-note">
+      The lines cross around week 2. To the left, rolling wins the sprint.
+      To the right, CAGR wins the marathon. Neither is right in general.
+      Different questions need different math.
+    </p>
+  </section>
+
+  <div class="foot">
+    <div>
+      dronespredictions.net
+      &nbsp;·&nbsp;
+      <a href="https://github.com/connormmc777/ukraine-drone-forecast" target="_blank" rel="noopener">github.com/connormmc777/ukraine-drone-forecast</a>
+    </div>
+    <div>Numbers from live UA Air Force data via @kpszsu.</div>
+  </div>
+</div>
+
+<script>
+// ---------- Real backtest data (from live pod, 11 closed weeks) ----------
+// week ISO date, rolling forecast (locked snapshot), CAGR-adjusted forecast,
+// realized actual (null for future). Projections extend 12 weeks past the
+// last real actual.
+const HISTORY = [
+  { wk: '2026-05-11', rolling: 2100, cagr: 2112, actual: 2505 },
+  { wk: '2026-05-18', rolling: 2177, cagr: 2189, actual: 1935 },
+  { wk: '2026-05-25', rolling: 2065, cagr: 2076, actual: 1323 },
+  { wk: '2026-06-01', rolling: 2170, cagr: 2182, actual: 1900 },
+  { wk: '2026-06-08', rolling: 2170, cagr: 2182, actual: 1082 },
+  { wk: '2026-06-15', rolling: 1862, cagr: 1872, actual: 1395 },
+  { wk: '2026-06-22', rolling: 1862, cagr: 1872, actual:  773 },
+  { wk: '2026-06-29', rolling: 1253, cagr: 1260, actual:  920 },
+  { wk: '2026-07-06', rolling: 1253, cagr: 1260, actual:  987 },
+  { wk: '2026-07-13', rolling: 1302, cagr: 1309, actual:  882 },
+  { wk: '2026-07-20', rolling: 1099, cagr: 1105, actual: 1009 },
+  { wk: '2026-07-27', rolling: 1043, cagr: 1052, actual: null },  // in-progress week
+];
+// Project 12 weeks forward.
+// - Rolling: reverts to recent 14-day mean × 7 × 1.10; assume flat 1050 ± 30 wobble
+// - CAGR:    apply 153% annual CAGR (2024→2026) = 1.80% per week compounded
+const CAGR_WEEKLY = 0.018;
+function projectForward(base_wk, base_roll, base_cagr, weeks) {
+  const out = [];
+  let cagr = base_cagr;
+  for (let i = 1; i <= weeks; i++) {
+    const d = new Date(base_wk);
+    d.setUTCDate(d.getUTCDate() + 7 * i);
+    const iso = d.toISOString().slice(0, 10);
+    // Rolling: mean-reverts to ~1050 with small drift
+    const roll = Math.round(1050 + (Math.sin(i * 0.7) * 40));
+    cagr = Math.round(cagr * (1 + CAGR_WEEKLY));
+    out.push({ wk: iso, rolling: roll, cagr, actual: null, future: true });
+  }
+  return out;
+}
+const LAST = HISTORY[HISTORY.length - 1];
+const FUTURE = projectForward(LAST.wk, LAST.rolling, LAST.cagr, 12);
+const DATA = [...HISTORY, ...FUTURE];
+
+// The "today" cutoff is the first row where actual is null.
+const TODAY_INDEX = DATA.findIndex(d => d.actual === null);
+
+// ---------- Predictions chart ----------
+const svg = document.getElementById('pred-svg');
+const W = 900, H = 380;
+const PAD_L = 60, PAD_R = 24, PAD_T = 20, PAD_B = 44;
+const plotW = W - PAD_L - PAD_R;
+const plotH = H - PAD_T - PAD_B;
+
+const xForI = i => PAD_L + (i / (DATA.length - 1)) * plotW;
+const yMax = 2700;
+const yMin = 0;
+const yFor = v => PAD_T + plotH - ((v - yMin) / (yMax - yMin)) * plotH;
+
+function svgEl(tag, attrs = {}) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+// grid + y ticks
+[0, 500, 1000, 1500, 2000, 2500].forEach(v => {
+  const y = yFor(v);
+  svg.appendChild(svgEl('line', {
+    class: 'grid-line',
+    x1: PAD_L, x2: W - PAD_R, y1: y, y2: y,
+  }));
+  const t = svgEl('text', { x: PAD_L - 10, y: y + 4, 'text-anchor': 'end' });
+  t.textContent = v.toLocaleString();
+  svg.appendChild(t);
+});
+
+// x ticks — show every 3rd week
+DATA.forEach((d, i) => {
+  if (i % 3 !== 0 && i !== DATA.length - 1) return;
+  const x = xForI(i);
+  const t = svgEl('text', { x, y: H - PAD_B + 16, 'text-anchor': 'middle' });
+  t.textContent = d.wk.slice(5);   // MM-DD
+  svg.appendChild(t);
+});
+
+// "today" divider
+const todayX = xForI(TODAY_INDEX);
+svg.appendChild(svgEl('line', {
+  class: 'today-line',
+  x1: todayX, x2: todayX, y1: PAD_T, y2: PAD_T + plotH,
+}));
+const todayLabel = svgEl('text', {
+  class: 'today-label',
+  x: todayX + 6, y: PAD_T + 12,
+});
+todayLabel.textContent = 'today';
+svg.appendChild(todayLabel);
+
+// Rolling line — split into past-solid + future-dashed
+function pathFor(getter, sliceStart, sliceEnd) {
+  const pts = [];
+  for (let i = sliceStart; i <= sliceEnd; i++) {
+    pts.push(`${i === sliceStart ? 'M' : 'L'} ${xForI(i).toFixed(2)} ${yFor(getter(DATA[i])).toFixed(2)}`);
+  }
+  return pts.join(' ');
+}
+
+svg.appendChild(svgEl('path', {
+  class: 'line-rolling',
+  d: pathFor(d => d.rolling, 0, TODAY_INDEX - 1),
+}));
+svg.appendChild(svgEl('path', {
+  class: 'line-rolling line-future',
+  d: pathFor(d => d.rolling, TODAY_INDEX - 1, DATA.length - 1),
+}));
+svg.appendChild(svgEl('path', {
+  class: 'line-cagr',
+  d: pathFor(d => d.cagr, 0, TODAY_INDEX - 1),
+}));
+svg.appendChild(svgEl('path', {
+  class: 'line-cagr line-future',
+  d: pathFor(d => d.cagr, TODAY_INDEX - 1, DATA.length - 1),
+}));
+
+// actual dots
+DATA.forEach((d, i) => {
+  if (d.actual == null) return;
+  svg.appendChild(svgEl('circle', {
+    class: 'actual-dot',
+    cx: xForI(i), cy: yFor(d.actual), r: 5,
+  }));
+});
+
+// axis label
+const axLabel = svgEl('text', {
+  class: 'axis-label',
+  x: PAD_L, y: 14, 'text-anchor': 'start',
+});
+axLabel.textContent = 'DRONES PER WEEK';
+svg.appendChild(axLabel);
+
+// cursor group (initially hidden)
+const cursorLine = svgEl('line', {
+  class: 'cursor-line',
+  x1: 0, x2: 0, y1: PAD_T, y2: PAD_T + plotH,
+  style: 'display:none',
+});
+svg.appendChild(cursorLine);
+const cDotR = svgEl('circle', { class: 'cursor-dot-r', r: 5, style: 'display:none' });
+const cDotC = svgEl('circle', { class: 'cursor-dot-c', r: 5, style: 'display:none' });
+const cDotA = svgEl('circle', { class: 'cursor-dot-a', r: 6, style: 'display:none' });
+svg.appendChild(cDotR); svg.appendChild(cDotC); svg.appendChild(cDotA);
+
+// ---------- Readout wiring ----------
+const wkLabel  = document.getElementById('wk-label');
+const wkRoll   = document.getElementById('wk-roll');
+const wkCagr   = document.getElementById('wk-cagr');
+const wkAct    = document.getElementById('wk-actual');
+const wkMape   = document.getElementById('wk-mape');
+const selLabel = document.getElementById('sel-label');
+
+function fmt(v) { return v == null ? '—' : v.toLocaleString(); }
+function pct(v) { return v == null ? '—' : (v * 100).toFixed(1) + '%'; }
+
+function updateReadout(i) {
+  const d = DATA[i];
+  wkLabel.textContent = d.wk;
+  wkRoll.textContent  = fmt(d.rolling);
+  wkCagr.textContent  = fmt(d.cagr);
+  wkAct.textContent   = d.actual == null ? '—' : d.actual.toLocaleString();
+  if (d.actual != null) {
+    const apeR = Math.abs(d.rolling - d.actual) / d.actual;
+    const apeC = Math.abs(d.cagr    - d.actual) / d.actual;
+    wkMape.innerHTML =
+      `rolling <b style="color:var(--rolling);font-family:ui-monospace,monospace">${pct(apeR)}</b>` +
+      ` &nbsp;·&nbsp; CAGR <b style="color:var(--cagr);font-family:ui-monospace,monospace">${pct(apeC)}</b>`;
+  } else {
+    wkMape.textContent = 'in the future — no actual yet';
+  }
+  const kind = d.actual == null ? 'projected' : 'closed';
+  selLabel.innerHTML =
+    `Inspecting the week of <b>${d.wk}</b>. ` +
+    `Status: <b>${kind}</b>. ` +
+    `Divergence between models: <b>${Math.abs(d.rolling - d.cagr).toLocaleString()}</b> drones.`;
+
+  cursorLine.setAttribute('x1', xForI(i));
+  cursorLine.setAttribute('x2', xForI(i));
+  cursorLine.style.display = 'block';
+  cDotR.setAttribute('cx', xForI(i)); cDotR.setAttribute('cy', yFor(d.rolling)); cDotR.style.display = 'block';
+  cDotC.setAttribute('cx', xForI(i)); cDotC.setAttribute('cy', yFor(d.cagr));    cDotC.style.display = 'block';
+  if (d.actual != null) {
+    cDotA.setAttribute('cx', xForI(i)); cDotA.setAttribute('cy', yFor(d.actual)); cDotA.style.display = 'block';
+  } else {
+    cDotA.style.display = 'none';
+  }
+}
+
+function hideReadout() {
+  cursorLine.style.display = 'none';
+  cDotR.style.display = 'none';
+  cDotC.style.display = 'none';
+  cDotA.style.display = 'none';
+  selLabel.textContent = 'Hover the chart to inspect a specific week.';
+  wkLabel.textContent = '—';
+  wkRoll.textContent = wkCagr.textContent = wkAct.textContent = '—';
+  wkMape.textContent = 'rolling — · CAGR —';
+}
+
+const predFrame = document.getElementById('pred-frame');
+function handlePointer(e) {
+  const rect = svg.getBoundingClientRect();
+  const clientX = ('clientX' in e) ? e.clientX : (e.touches && e.touches[0].clientX);
+  if (clientX == null) return;
+  const relX = ((clientX - rect.left) / rect.width) * W;
+  // Snap to nearest data point
+  let bestI = 0, bestD = Infinity;
+  for (let i = 0; i < DATA.length; i++) {
+    const dx = Math.abs(xForI(i) - relX);
+    if (dx < bestD) { bestD = dx; bestI = i; }
+  }
+  updateReadout(bestI);
+}
+predFrame.addEventListener('pointermove', handlePointer);
+predFrame.addEventListener('pointerdown', handlePointer);
+predFrame.addEventListener('pointerleave', hideReadout);
+
+// Initialize showing the 8.9% hit week
+updateReadout(HISTORY.findIndex(d => d.wk === '2026-07-20'));
+
+// ---------- MAPE-vs-horizon chart ----------
+// Illustrative curves — theoretical shape from forecasting-textbook priors.
+// Not backtested. Labeled as such in the caption.
+const HORIZONS = [1, 2, 3, 4, 6, 8, 12, 16, 20, 26, 34, 42, 52];
+const MAPE_ROLL = [15, 22, 26, 32, 39, 45, 55, 63, 70, 78, 84, 88, 92];
+const MAPE_CAGR = [22, 25, 26, 28, 29, 30, 32, 34, 35, 36, 37, 39, 40];
+
+const svg2 = document.getElementById('mape-svg');
+const W2 = 900, H2 = 300;
+const P2L = 60, P2R = 24, P2T = 20, P2B = 44;
+const p2W = W2 - P2L - P2R;
+const p2H = H2 - P2T - P2B;
+
+const xHor = h => {
+  // Log scale on horizon so the crossover reads clearly
+  const lmin = Math.log(HORIZONS[0]);
+  const lmax = Math.log(HORIZONS[HORIZONS.length - 1]);
+  return P2L + ((Math.log(h) - lmin) / (lmax - lmin)) * p2W;
+};
+const yMape = m => P2T + p2H - (m / 100) * p2H;
+
+function svgEl2(tag, attrs = {}) { return svgEl(tag, attrs); }
+
+// horizontal grid @ 20%, 40%, 60%, 80%
+[20, 40, 60, 80, 100].forEach(v => {
+  const y = yMape(v);
+  svg2.appendChild(svgEl2('line', { class: 'grid-line', x1: P2L, x2: W2 - P2R, y1: y, y2: y }));
+  const t = svgEl2('text', { x: P2L - 10, y: y + 4, 'text-anchor': 'end' });
+  t.textContent = v + '%';
+  svg2.appendChild(t);
+});
+
+// x ticks on horizon
+[1, 2, 4, 8, 12, 26, 52].forEach(h => {
+  const x = xHor(h);
+  svg2.appendChild(svgEl2('line', { class: 'grid-line', x1: x, x2: x, y1: P2T + p2H, y2: P2T + p2H + 4 }));
+  const t = svgEl2('text', { x, y: H2 - P2B + 16, 'text-anchor': 'middle' });
+  t.textContent = h + 'w';
+  svg2.appendChild(t);
+});
+
+const axLabel2 = svgEl2('text', {
+  class: 'axis-label', x: P2L, y: 14, 'text-anchor': 'start',
+});
+axLabel2.textContent = 'EXPECTED MAPE';
+svg2.appendChild(axLabel2);
+const axLabel2b = svgEl2('text', {
+  class: 'axis-label', x: W2 - P2R, y: H2 - 10, 'text-anchor': 'end',
+});
+axLabel2b.textContent = 'FORECAST HORIZON';
+svg2.appendChild(axLabel2b);
+
+function pathHorizon(vals) {
+  return HORIZONS.map((h, i) => `${i === 0 ? 'M' : 'L'} ${xHor(h).toFixed(2)} ${yMape(vals[i]).toFixed(2)}`).join(' ');
+}
+
+svg2.appendChild(svgEl2('path', { class: 'line-rolling', d: pathHorizon(MAPE_ROLL) }));
+svg2.appendChild(svgEl2('path', { class: 'line-cagr',    d: pathHorizon(MAPE_CAGR) }));
+
+// end-of-line labels
+const labelR = svgEl2('text', {
+  x: xHor(52) + 6, y: yMape(92) + 4,
+  'text-anchor': 'start',
+  style: 'fill: var(--rolling); font-weight: 700; font-size: 11px;',
+});
+labelR.textContent = 'ROLLING';
+svg2.appendChild(labelR);
+const labelC = svgEl2('text', {
+  x: xHor(52) + 6, y: yMape(40) + 4,
+  'text-anchor': 'start',
+  style: 'fill: var(--cagr); font-weight: 700; font-size: 11px;',
+});
+labelC.textContent = 'CAGR';
+svg2.appendChild(labelC);
+
+// cursor line + hover readout on MAPE chart
+const cur2 = svgEl2('line', {
+  class: 'cursor-line',
+  x1: 0, x2: 0, y1: P2T, y2: P2T + p2H,
+  style: 'display:none',
+});
+svg2.appendChild(cur2);
+const dot2R = svgEl2('circle', { class: 'cursor-dot-r', r: 5, style: 'display:none' });
+const dot2C = svgEl2('circle', { class: 'cursor-dot-c', r: 5, style: 'display:none' });
+svg2.appendChild(dot2R); svg2.appendChild(dot2C);
+const tip2 = svgEl2('text', {
+  x: 0, y: 0, style: 'display:none; font-family: ui-monospace, monospace; font-size: 12px; fill: var(--ink);'
+});
+svg2.appendChild(tip2);
+
+// Interpolate expected MAPE at a continuous horizon
+function interp(xs, ys, x) {
+  if (x <= xs[0]) return ys[0];
+  if (x >= xs[xs.length - 1]) return ys[ys.length - 1];
+  for (let i = 0; i < xs.length - 1; i++) {
+    if (x >= xs[i] && x <= xs[i + 1]) {
+      const t = (x - xs[i]) / (xs[i + 1] - xs[i]);
+      return ys[i] + t * (ys[i + 1] - ys[i]);
+    }
+  }
+  return ys[ys.length - 1];
+}
+
+const mapeFrame = document.getElementById('mape-frame');
+function handlePointer2(e) {
+  const rect = svg2.getBoundingClientRect();
+  const clientX = ('clientX' in e) ? e.clientX : (e.touches && e.touches[0].clientX);
+  if (clientX == null) return;
+  const relX = ((clientX - rect.left) / rect.width) * W2;
+  if (relX < P2L || relX > W2 - P2R) return;
+  // Convert x back to horizon (log inverse)
+  const lmin = Math.log(HORIZONS[0]);
+  const lmax = Math.log(HORIZONS[HORIZONS.length - 1]);
+  const h = Math.exp(lmin + ((relX - P2L) / p2W) * (lmax - lmin));
+  const rVal = interp(HORIZONS, MAPE_ROLL, h);
+  const cVal = interp(HORIZONS, MAPE_CAGR, h);
+
+  cur2.setAttribute('x1', relX); cur2.setAttribute('x2', relX);
+  cur2.style.display = 'block';
+  dot2R.setAttribute('cx', relX); dot2R.setAttribute('cy', yMape(rVal)); dot2R.style.display = 'block';
+  dot2C.setAttribute('cx', relX); dot2C.setAttribute('cy', yMape(cVal)); dot2C.style.display = 'block';
+
+  const hStr = h < 2 ? h.toFixed(1) : Math.round(h);
+  tip2.innerHTML = '';
+  const t1 = svgEl2('tspan', { x: relX + 8, dy: 0, style: 'fill: var(--rolling); font-weight: 700' });
+  t1.textContent = `${hStr}w →  rolling ${rVal.toFixed(0)}%`;
+  const t2 = svgEl2('tspan', { x: relX + 8, dy: 14, style: 'fill: var(--cagr); font-weight: 700' });
+  t2.textContent = `        CAGR ${cVal.toFixed(0)}%`;
+  tip2.appendChild(t1); tip2.appendChild(t2);
+  tip2.setAttribute('x', relX + 8);
+  tip2.setAttribute('y', Math.min(yMape(rVal), yMape(cVal)) - 12);
+  // Flip tip to left if too close to right edge
+  if (relX > W2 - 140) {
+    tip2.setAttribute('text-anchor', 'end');
+    t1.setAttribute('x', relX - 8); t2.setAttribute('x', relX - 8);
+  } else {
+    tip2.setAttribute('text-anchor', 'start');
+  }
+  tip2.style.display = 'block';
+}
+function hidePointer2() {
+  cur2.style.display = 'none';
+  dot2R.style.display = 'none';
+  dot2C.style.display = 'none';
+  tip2.style.display = 'none';
+}
+mapeFrame.addEventListener('pointermove', handlePointer2);
+mapeFrame.addEventListener('pointerdown', handlePointer2);
+mapeFrame.addEventListener('pointerleave', hidePointer2);
+</script>

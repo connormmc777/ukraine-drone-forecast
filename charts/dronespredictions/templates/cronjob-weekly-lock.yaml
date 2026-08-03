@@ -30,7 +30,21 @@ spec:
               image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
               imagePullPolicy: {{ .Values.image.pullPolicy }}
               workingDir: /app
-              command: ["python", "lock_weekly_snapshot.py"]
+              # Two locks in one Job so both models get frozen atomically
+              # every Monday:
+              #   1. lock_weekly_snapshot.py — rolling forecast (canonical)
+              #   2. lock_multi_model.py     — mirrors rolling + writes CAGR
+              # If either fails mid-way, the CronJob retries the whole thing.
+              # --no-backfill on the second script keeps it a fast idempotent
+              # per-week write instead of re-scanning 12 weeks every Monday.
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -e
+                  echo "[1/2] Locking rolling snapshot..."
+                  python lock_weekly_snapshot.py
+                  echo "[2/2] Locking multi-model predictions..."
+                  python lock_multi_model.py --no-backfill
               envFrom:
                 - configMapRef:
                     name: {{ include "dronespredictions.fullname" . }}-config

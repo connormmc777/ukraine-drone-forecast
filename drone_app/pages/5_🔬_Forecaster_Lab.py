@@ -403,7 +403,6 @@ with col_short:
         primary_pred = latest.get("damped_trend_ets") or latest.get("rolling_14d_x110")
         if pd.notna(primary_pred) and primary_pred > 0:
             per_day = primary_pred / 7
-            # Rough intercept miss rate — from Air Defense Analytics
             typical_intercept = 0.88
             expected_leakers = per_day * (1 - typical_intercept)
 
@@ -412,12 +411,36 @@ with col_short:
                 f"- Total projected: **{int(primary_pred):,} drones**\n"
                 f"- Per-night average: **{int(per_day)}**\n"
                 f"- Expected leakers/night (at 88% intercept): "
-                f"**{expected_leakers:.1f}**\n\n"
-                f"**Recommendation:** Route interceptor coverage toward oblasts "
-                f"with the highest per-share × per-day projection.  The Structural "
-                f"Share regression (F=8.04, p=0.002) says border proximity dominates "
-                f"— Sumy, Chernihiv, Kharkiv are the highest-share oblasts this week."
+                f"**{expected_leakers:.1f}**"
             )
+
+            # ---- Live per-oblast allocation, ranked by expected leakers ----
+            fc_csv = DATA_DIR / "updated_forecast.csv"
+            if fc_csv.exists():
+                try:
+                    fc_ob = pd.read_csv(fc_csv)
+                    fc_ob = fc_ob[["oblast", "share"]].dropna()
+                    fc_ob["proj_weekly"]     = fc_ob["share"] * primary_pred
+                    fc_ob["proj_nightly"]    = fc_ob["proj_weekly"] / 7
+                    fc_ob["exp_leakers_wk"]  = fc_ob["proj_weekly"] * (1 - typical_intercept)
+                    fc_ob = fc_ob.sort_values("exp_leakers_wk", ascending=False)
+                    top5 = fc_ob.head(5).copy()
+                    top5["proj_weekly"]    = top5["proj_weekly"].round(0).astype(int)
+                    top5["exp_leakers_wk"] = top5["exp_leakers_wk"].round(1)
+                    top5["share"]          = (top5["share"] * 100).round(1).astype(str) + "%"
+                    top5 = top5[["oblast", "share", "proj_weekly", "exp_leakers_wk"]]
+                    top5.columns = ["Oblast", "Share", "Proj. drones/wk", "Exp. leakers/wk"]
+                    st.markdown("**Top 5 oblasts to prioritise coverage this week:**")
+                    st.dataframe(top5, use_container_width=True, hide_index=True)
+                    st.caption(
+                        "Ranked by expected leakers = projected drones × (1 − 88% intercept). "
+                        "Structural share is from the target-share OLS regression "
+                        "(F=8.04, p=0.002) with border proximity dominant. Move mobile "
+                        "IRIS-T / NASAMS interceptor coverage toward these oblasts before "
+                        "Monday night."
+                    )
+                except Exception as _e:
+                    st.caption(f"(per-oblast rank unavailable: {type(_e).__name__})")
 
 with col_long:
     with st.container(border=True):

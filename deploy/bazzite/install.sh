@@ -37,6 +37,25 @@ if [ -z "$CF_TUNNEL_TOKEN" ] || [ "$CF_TUNNEL_TOKEN" = "PASTE_CLOUDFLARE_TUNNEL_
     exit 1
 fi
 
+# Bail early if we're inside a distrobox / flatpak sandbox — podman +
+# k3s + helm all live on the HOST, not inside container namespaces.
+if ! command -v podman >/dev/null 2>&1; then
+    echo "ERROR: podman not found in PATH." >&2
+    if [ -n "${DISTROBOX_ENTER_PATH:-}" ] || [ -f /run/.containerenv ] || \
+       grep -q distrobox /proc/1/cgroup 2>/dev/null; then
+        echo "  You appear to be INSIDE a distrobox container." >&2
+        echo "  Podman, k3s, and helm all run on the host, not the container." >&2
+        echo "  Fix: type 'exit' to leave the distrobox, then re-run this script." >&2
+        echo "  Your prompt will change from 'cmcsweeney@dev' back to 'cmcsweeney@bazzite'." >&2
+    else
+        echo "  Install podman via rpm-ostree (Bazzite) or your distro's package manager." >&2
+    fi
+    exit 1
+fi
+if ! command -v k3s >/dev/null 2>&1 && ! sudo -n k3s --version >/dev/null 2>&1; then
+    echo "WARNING: k3s not in PATH.  You'll hit an error at step 3 if it's not on the host." >&2
+fi
+
 echo "==> [1/6] Building $IMAGE with podman"
 podman build -t "$IMAGE" "$ROOT"
 

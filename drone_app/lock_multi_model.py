@@ -28,6 +28,12 @@ DB = DATA_DIR / "forecast_history.db"
 CAGR_ANNUAL   = 1.53
 CAGR_WEEKLY   = (1 + CAGR_ANNUAL) ** (1 / 52) - 1   # ≈ 0.018 per week
 
+# Regime detector — imported so we can lock the state + a third prediction
+# per week alongside rolling and CAGR.
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).parent))
+import regime_detector as rd
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS weekly_model_predictions (
     week_start       TEXT NOT NULL,
@@ -38,6 +44,15 @@ CREATE TABLE IF NOT EXISTS weekly_model_predictions (
     PRIMARY KEY (week_start, model_name)
 );
 CREATE INDEX IF NOT EXISTS idx_wmp_week ON weekly_model_predictions(week_start);
+
+CREATE TABLE IF NOT EXISTS weekly_regime_state (
+    week_start   TEXT PRIMARY KEY,
+    state        TEXT NOT NULL,      -- onset / sustaining / collapsing / steady
+    d1           REAL,
+    d2           REAL,
+    reason       TEXT,
+    locked_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 
@@ -96,19 +111,77 @@ def load_daily() -> pd.DataFrame:
     return d.sort_values("date").reset_index(drop=True)
 
 
+def _upsert_regime(conn, week_start: date, r: dict):
+    conn.execute(
+        """INSERT INTO weekly_regime_state
+           (week_start, state, d1, d2, reason)
+           VALUES (?, ?, ?, ?, ?)
+           ON CONFLICT(week_start) DO UPDATE SET
+             state = excluded.state, d1 = excluded.d1,
+             d2 = excluded.d2, reason = excluded.reason,
+             locked_at = datetime('now')""",
+        (week_start.isoformat(), r["state"], r["d1"], r["d2"], r["reason"]),
+    )
+
+
 def lock_week(week_start: date, conn, daily: pd.DataFrame) -> dict:
+    """Lock every model's prediction for `week_start` in a single
+    atomic Job. New models can be added to the loop below without
+    schema changes — each writes one row to weekly_model_predictions.
+    """
     result = {"week_start": week_start.isoformat()}
-    # Rolling
+
+    # ---- 1. Rolling (canonical from snapshots table) ----
     r = _rolling_prediction_from_snapshot(conn, week_start)
     if r:
         _upsert(conn, week_start, "rolling_14d_x110", r[0],
                 f"14d mean × 7 × 1.10 (mirror of snapshots table): {r[1][:80]}")
         result["rolling"] = r[0]
-    # CAGR
+
+    # ---- 2. CAGR (kept for backward compat + comparison) ----
     c = _cagr_prediction(week_start, daily)
     if c:
         _upsert(conn, week_start, "cagr_geometric", c[0], c[1])
         result["cagr"] = c[0]
+
+    # ---- 3. Regime state ----
+    regime = rd.detect_regime(daily, as_of_date=week_start)
+    _upsert_regime(conn, week_start, regime)
+    result["regime"] = regime["state"]
+
+    # ---- 4. Regime-aware combined prediction ----
+    if "rolling" in result and "cagr" in result:
+        ra_pred, ra_note = rd.apply_bias_correction(
+            result["rolling"], result["cagr"], regime["state"]
+        )
+        _upsert(conn, week_start, "regime_aware", ra_pred, ra_note)
+        result["regime_aware"] = ra_pred
+
+    # ---- 5. Alternative forecasters (proper models per reader critique) ----
+    try:
+        import forecasters as fc
+        for model_name, fn in fc.FORECASTERS.items():
+            # rolling_baseline in forecasters.py duplicates rolling_14d_x110 —
+            # skip to avoid double-writing the same number under two names
+            if model_name == "rolling_baseline":
+                continue
+            try:
+                pred = fn(daily, week_start)
+                _upsert(conn, week_start, model_name,
+                        pred["predicted_total"], pred["method_note"])
+                # Also store the 90% PI when we have one
+                if pred.get("lower_90") is not None:
+                    _upsert(conn, week_start, f"{model_name}_lo90",
+                            pred["lower_90"], f"PI lower for {model_name}")
+                    _upsert(conn, week_start, f"{model_name}_hi90",
+                            pred["upper_90"], f"PI upper for {model_name}")
+                result[model_name] = pred["predicted_total"]
+            except Exception as _e:
+                # A single model failing must not block the others
+                result[f"{model_name}_error"] = f"{type(_e).__name__}: {_e}"
+    except ImportError:
+        result["forecasters_error"] = "forecasters.py not importable"
+
     return result
 
 

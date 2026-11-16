@@ -1,0 +1,12 @@
+date,actor,campaign,origin_country,origin_lat,origin_lon,target_zone,target_lat,target_lon,uav_count,cruise_count,ballistic_count,intercept_pct,us_interceptors_fired,notes,sources
+2024-01-28,Iraq militia (Kataib Hezbollah),Tower 22,Iraq,34.4,41.0,Jordan (Tower 22),32.5,38.7,1,0,0,0,0,"3 US KIA, 40 WIA. Tower 22 base.","CENTCOM, DoD"
+2024-04-14,Iran IRGC,True Promise I,Iran,32.6,51.7,Israel,32.08,34.78,170,30,120,99,80,"First direct Iran→Israel strike. US/UK/France/Jordan/Israel intercepted jointly.","USNI, IDF, DoD"
+2024-10-01,Iran IRGC,True Promise II,Iran,32.6,51.7,Israel,32.08,34.78,0,0,180,85,50,"Ballistic-only (Fattah-1, Kheibar Shekan). ~5 hit Nevatim AFB.","USNI, IDF, CSIS"
+2024-05-31,Houthi,Red Sea campaign (cumulative Q1-Q2 2024),Yemen,15.4,44.2,Red Sea shipping,14.0,42.0,120,45,20,88,55,"Cumulative Nov 2023 - May 2024 against US CENTCOM + shipping.","USNI, CENTCOM"
+2024-12-31,Houthi,Red Sea campaign (cumulative Q3-Q4 2024),Yemen,15.4,44.2,Red Sea shipping,14.0,42.0,145,55,25,85,65,"Q3-Q4 2024. Cumulative campaign totals exceed 400 engagements.","USNI, CENTCOM"
+2025-06-13,Iran IRGC,12-day war (Day 1),Iran,32.6,51.7,Israel,32.08,34.78,120,40,180,78,95,"Iranian response to Israeli strikes on nuclear facilities. First day of exchange.","Reuters, IDF, ISW"
+2025-06-18,Iran IRGC,12-day war (peak surge),Iran,32.6,51.7,Israel,32.08,34.78,80,25,110,72,65,"Peak intensity night. Arrow 3 and SM-3 heavy expenditure.","Reuters, IDF, USNI"
+2025-06-24,Iran IRGC,12-day war (ceasefire eve),Iran,32.6,51.7,Israel,32.08,34.78,60,15,80,80,45,"Final major salvo before ceasefire.","Reuters, IDF"
+2025-10-15,Houthi,Red Sea campaign (cumulative 2025),Yemen,15.4,44.2,Red Sea shipping,14.0,42.0,210,70,40,82,110,"2025 full-year cumulative (Red Sea + CENTCOM).","USNI, CENTCOM"
+2026-04-22,Iran IRGC + proxies,Spring 2026 surge,Iran,32.6,51.7,Israel,32.08,34.78,65,20,45,80,30,"Lower-intensity exchange following unresolved tensions.","Reuters (public reporting)"
+2026-09-08,Houthi,Autumn 2026 operations,Yemen,15.4,44.2,Red Sea shipping,14.0,42.0,40,15,8,85,20,"Autumn 2026 continued Houthi pressure on shipping.","USNI (public reporting)"

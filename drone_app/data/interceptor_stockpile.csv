@@ -1,0 +1,9 @@
+interceptor,role,unit_cost_musd,inventory_2024_est,production_per_yr_est,us_fired_cumulative_est,notes,sources
+SM-3 Block IB,Exo-atmospheric ballistic,10,250,15,45,"Primary mid-course BMD. Standing inventory ~200-300.","CRS RL33745, USNI"
+SM-3 Block IIA,Exo-atmospheric ballistic,18,100,12,15,"Co-developed w/ Japan. High-value, scarce.","CRS, GAO-24"
+SM-6,Terminal / anti-ship / cruise,4.3,900,125,85,"Dual-role: high stock, high production ramp.","CRS, Reuters"
+THAAD,Upper-tier terminal ballistic,12,600,50,25,"Deployed in UAE, Guam. Israel ops Oct 2024+.","MDA, CSIS"
+Patriot PAC-3 MSE,Lower-tier terminal,4,700,550,150,"Production ramp to 650/yr by 2027. Heavy demand Ukraine+Israel.","Lockheed Martin, Reuters"
+Arrow 3 (IL),Exo-atmospheric ballistic,3,80,24,70,"Israeli. Used heavily True Promise + 12-day war.","Rafael, IAI public"
+David's Sling Stunner (IL),Medium-range,1.5,250,80,120,"Israeli. Tamir upgrade.","Rafael public"
+Iron Dome Tamir (IL),Short-range,0.05,3500,900,2800,"Low-cost high-volume. Not relevant for Iran direct.","Rafael public"

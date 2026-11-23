@@ -342,6 +342,135 @@ if len(multi):
 
 
 st.markdown("---")
+st.subheader("Hypothesis tests — corridor vs target, regimes, ring, gate")
+st.caption(
+    "Four tests from the public LinkedIn writeup, run live against the "
+    "last 30 days of `drone_sightings.csv`.  Overcount caveat: one drone "
+    "can appear in several posts along its path, which is EXACTLY why "
+    "the corridor-vs-target split matters — it separates transit from "
+    "intended destination."
+)
+
+_test_window_days = 30
+_test_cutoff = pd.Timestamp.utcnow() - pd.Timedelta(days=_test_window_days)
+_s = sights[sights["posted_at"] >= _test_cutoff].copy()
+
+if _s.empty:
+    st.info("No sightings in the last 30 days.")
+else:
+    # Parse ordered oblast lists per post
+    def _parse(obs):
+        if not isinstance(obs, str): return []
+        return [o.strip() for o in obs.split(",") if o.strip()]
+    _s["obs_list"] = _s["all_oblasts"].fillna(_s["oblast"]).apply(_parse)
+
+    # ---- Test 1: corridor vs target ----
+    origins, endpoints = {}, {}
+    for lst in _s["obs_list"]:
+        if len(lst) >= 2:
+            origins[lst[0]]   = origins.get(lst[0], 0) + 1
+            endpoints[lst[-1]] = endpoints.get(lst[-1], 0) + 1
+    all_obl = sorted(set(list(origins) + list(endpoints)))
+    ce_tbl = pd.DataFrame([{
+        "Oblast": o,
+        "As arc origin":   origins.get(o, 0),
+        "As arc endpoint": endpoints.get(o, 0),
+        "Origin − Endpoint": origins.get(o, 0) - endpoints.get(o, 0),
+    } for o in all_obl]).sort_values("Origin − Endpoint", ascending=False)
+
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("**Test 1 — Corridor vs Target (last 30 d)**")
+        st.caption("Positive Δ = corridor (seen more entering than ending). "
+                   "Negative Δ = target (ends up here).")
+        st.dataframe(ce_tbl.head(12), use_container_width=True, hide_index=True)
+
+    # ---- Test 2: two regimes (deep-strike vs frontline) ----
+    with c2:
+        st.markdown("**Test 2 — Two regimes (deep-strike vs frontline)**")
+        feats = pd.read_csv(DATA_DIR / "oblast_features.csv")
+        bd = dict(zip(feats["oblast"], feats["border_dist"]))
+        _s["max_border_dist"] = _s["obs_list"].apply(
+            lambda lst: max((bd.get(o, 0) for o in lst), default=0))
+        _s["night"] = _s["posted_at"].dt.date
+        night_max = _s.groupby("night")["max_border_dist"].max()
+        deep_nights = set(night_max[night_max > 700].index)
+        _s["regime"] = _s["night"].apply(
+            lambda d: "deep" if d in deep_nights else "frontline")
+
+        # Fit decay: sightings-per-oblast vs border_dist, per regime
+        def _decay(sub):
+            per = sub.explode("obs_list").groupby("obs_list").size()
+            dd = pd.DataFrame({"n": per})
+            dd["bd"] = dd.index.map(bd)
+            dd = dd.dropna()
+            if len(dd) < 4: return None, None
+            # log-linear slope
+            x = dd["bd"].to_numpy(dtype=float)
+            y = np.log(dd["n"].to_numpy(dtype=float).clip(min=1))
+            slope = np.polyfit(x, y, 1)[0] if x.std() > 0 else np.nan
+            return slope, len(dd)
+
+        f_slope, f_n = _decay(_s[_s["regime"] == "frontline"])
+        d_slope, d_n = _decay(_s[_s["regime"] == "deep"])
+        st.caption("Log-linear decay slope of sightings per oblast vs "
+                   "border distance (km).  More negative = steeper decay.")
+        st.dataframe(pd.DataFrame([
+            {"Regime": "Frontline nights",
+             "Slope (log-count / km)": f"{f_slope:.5f}" if f_slope is not None else "n/a",
+             "Oblasts": f_n or 0,
+             "Nights": len(set(_s[_s['regime']=='frontline']['night']))},
+            {"Regime": "Deep-strike nights (any sighting > 700 km in)",
+             "Slope (log-count / km)": f"{d_slope:.5f}" if d_slope is not None else "n/a",
+             "Oblasts": d_n or 0,
+             "Nights": len(deep_nights)},
+        ]), use_container_width=True, hide_index=True)
+        if f_slope is not None and d_slope is not None:
+            st.caption(f"Frontline-vs-deep slope ratio: "
+                       f"{(d_slope / f_slope):.2f}× "
+                       f"(deep regime {'flatter' if abs(d_slope) < abs(f_slope) else 'steeper'} → "
+                       f"deep-strike nights distribute drones further from the border).")
+
+    # ---- Test 3: capital ring ----
+    c3, c4 = st.columns(2)
+    with c3:
+        st.markdown("**Test 3 — Capital ring (Kyiv Oblast / Kyiv City, last 30 d)**")
+        _s_exp = _s.explode("obs_list")
+        _s_exp["day"] = _s_exp["posted_at"].dt.date
+        daily = _s_exp.groupby(["day","obs_list"]).size().unstack(fill_value=0)
+        if "Kyiv Oblast" in daily.columns and "Kyiv City" in daily.columns:
+            daily["ratio"] = daily["Kyiv Oblast"] / daily["Kyiv City"].replace(0, np.nan)
+            above_2 = (daily["ratio"] > 2).sum()
+            total_d = daily["ratio"].notna().sum()
+            mean_r = daily["ratio"].dropna().mean()
+            st.metric("Days with ratio > 2", f"{above_2} / {total_d}",
+                      f"Mean ratio: {mean_r:.2f}")
+            st.caption("Hypothesis predicts ratio stays > 2 → drones "
+                       "reported on approach, not inside the city.")
+            st.line_chart(daily[["ratio"]].dropna().reset_index()
+                          .rename(columns={"day":"index"})
+                          .set_index("index"))
+        else:
+            st.caption("Kyiv Oblast / Kyiv City not both present.")
+
+    # ---- Test 4: entry gate ----
+    with c4:
+        st.markdown("**Test 4 — Entry gate (arcs starting in Chernihiv/Sumy)**")
+        arcs = _s[_s["obs_list"].apply(len) >= 2]
+        starts = arcs["obs_list"].apply(lambda l: l[0])
+        gate = starts.isin(["Chernihiv", "Sumy"]).sum()
+        total = len(starts)
+        pct = (100 * gate / total) if total else 0
+        st.metric("Arcs starting in Chernihiv or Sumy",
+                  f"{gate} / {total}", f"{pct:.1f}%")
+        top_starts = starts.value_counts().head(8)
+        st.dataframe(top_starts.rename_axis("Origin").reset_index(name="Arc count"),
+                     use_container_width=True, hide_index=True)
+        st.caption("Hypothesis: northern border oblasts are transit "
+                   "corridors (high arc-origin count), not targets.")
+
+
+st.markdown("---")
 st.caption(
     "**Method.**  Sightings from `drone_sightings.csv` (populated by "
     "the sync-loop container from @kpszsu).  Recency weight = "

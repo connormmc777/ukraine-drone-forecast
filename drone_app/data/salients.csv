@@ -1,0 +1,8 @@
+name,actor,tip_lat,tip_lon,base_lat,base_lon,depth_km,target,status,notes,sources
+Pokrovsk Wedge,RU,48.30,37.00,48.05,37.60,65,"Pokrovsk rail junction + E50 highway",active_advance,"Russia's deepest salient. Tip is ~22 km east of Pokrovsk rail junction as of Nov 2026.","ISW Nov 2026, RUSI"
+Toretsk-Kostiantynivka Axis,RU,48.55,37.85,48.17,38.05,45,"Kostiantynivka rail + rear of Kramatorsk-Sloviansk",active_advance,"Advance through Toretsk, pressing NW","ISW Nov 2026"
+Kupyansk Shoulder,RU,49.70,37.80,49.35,38.30,40,"Kupyansk junction + Oskil river line",active_advance,"Russian bridgehead over Oskil","ISW Sep-Nov 2026"
+Vovchansk Pocket,RU,50.30,36.95,50.12,37.00,20,"Shallow hold N of Kharkiv",contained,"May 2024 push; largely stabilized by UA","ISW 2024-2026"
+Velyka Novosilka Axis,RU,47.90,36.85,47.72,36.90,25,"NW toward Zaporizhzhia Oblast",active_advance,"Southern shoulder of Donetsk push","ISW Nov 2026"
+Lyman Push,RU,49.00,37.75,49.10,38.30,35,"Lyman rail + northern Donbas","active_advance","RU attempts to retake Lyman","ISW 2026"
+Kursk Residual,UA,51.20,35.30,51.35,34.75,30,"Sudzha-Korenevo sector",reduced_but_held,"Aug 2024 UA incursion; mostly reduced by late 2026 but residual positions held","ISW, CSIS 2025-26"

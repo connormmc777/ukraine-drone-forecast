@@ -1,0 +1,8 @@
+date,period,launched,intercepted,shaheds_estimated,missiles_intercepted,hits,hit_locations,posted_at,message_id,source
+2026-10-23,night,165.0,140,,0,25,10,2026-10-23T05:00:00+00:00,,"backfill: Ukrainska Pravda 2026-10-23 ""destroys 140 Russian drones overnight"""
+2026-10-24,night,126.0,93,,0,33,10,2026-10-24T05:00:00+00:00,,"backfill: Ukrinform/Interfax ""93 of 126 drones"" 2026-10-24"
+2026-10-26,night,101.0,90,60.0,0,11,4,2026-10-26T05:00:00+00:00,,"backfill: Yahoo/Interfax ""101 UAVs, 90 downed, 60 Shaheds"" 2026-10-26"
+2026-10-27,night,157.0,131,,0,26,10,2026-10-27T05:00:00+00:00,,"backfill: Censor.NET ""131 of 157"" 2026-10-27"
+2026-10-29,night,112.0,97,40.0,0,15,8,2026-10-29T05:00:00+00:00,,"backfill: multi-source ""97 of 112, 40 jet Shaheds"" 2026-10-29"
+2026-10-30,night,705.0,623,,30,82,25,2026-10-30T05:00:00+00:00,,"backfill: UA AF ""705 targets detected, 623 neutralized incl. 600 drones + 30 missiles"" massive surge night 2026-10-30"
+2026-11-06,night,227.0,196,,0,31,15,2026-11-06T05:00:00+00:00,,"backfill: Agenzia Nova ""196 of 227 since evening"" 2026-11-06"

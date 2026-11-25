@@ -243,6 +243,233 @@ with st.expander("Data provenance / caveats"):
         """
     )
 
+# ---------- LICTOR MESH ----------
+st.divider()
+st.header("🜨 LICTOR MESH — mobile escort swarm for the last mile")
+
+st.success(
+    "**This is a DEFENSIVE PUBLICATION.** Published to establish prior art and "
+    "keep this combination in the public domain under CC0 1.0. "
+    "First disclosure 2026-11-23, Connor McSweeney. Full text: "
+    "`concepts/lictor-mesh.md`. Use it, improve it, build it — but don't lock "
+    "it up. No patent claim is made or reserved on the combination below."
+)
+
+st.markdown(
+    """
+> *Lictors escorted Roman magistrates and carried the fasces — authority and
+> enforcement in one bundle. Lictor Mesh escorts the logistics that enable
+> Botzkrieg past the 90-km rail envelope.*
+
+**The gap it fills.**  Fielded counter-UAS — Fortem DroneHunter, Anduril
+Roadrunner, the gun and EW systems around fixed sites — is **stationary base
+defence**.  It protects a *place*.  The deceleration curve on this page points
+at a different need: **mobile protection for last-mile logistics past the
+~90-km rail envelope**, where trucks and UGVs are hunted across a 10–20 km
+grey zone.  Protecting a place is a different problem from protecting a thing
+that must keep moving.
+
+**The claimed combination** is all five elements together: a logistics UGV
+operating in the last-mile kill-zone; a **co-travelling** escort swarm of
+functionally differentiated interceptor classes; on-vehicle detection with a
+path for **RF-silent** fiber-optic threats; a **low-bandwidth mesh** carrying
+cue and track-handoff only, with terminal engagement run by on-board autonomy
+on each escort; and a dedicated **tether-severing** class.
+    """
+)
+
+# ---- schematic ----
+st.subheader("Schematic — one protected convoy node")
+
+fig, ax = plt.subplots(figsize=(11.5, 6.2))
+fig.patch.set_facecolor("#fcfcfb")
+ax.set_facecolor("#fcfcfb")
+BLUE, YEL, AQUA, RED = "#2a78d6", "#eda100", "#1baf7a", "#e34948"
+INK, INK2, MUT = "#0b0b0b", "#52514e", "#8a8984"
+
+for rad, col, lab, ls in ((1200, BLUE, "DETECTION required: 800–1200 m", "--"),
+                          (800, AQUA, "INTERCEPT envelope: 400–800 m", "-")):
+    ax.add_patch(plt.Circle((0, 0), rad, fill=False, ec=col, lw=2.0, ls=ls,
+                            alpha=0.9, zorder=2))
+    ax.annotate(lab, xy=(0, rad), xytext=(0, 8), textcoords="offset points",
+                ha="center", fontsize=9.5, color=col, fontweight="bold")
+ax.add_patch(plt.Circle((0, 0), 400, fill=False, ec=AQUA, lw=1.0, ls=":",
+                        alpha=0.55, zorder=2))
+
+ax.plot([-1900, 1900], [0, 0], color=MUT, lw=10, alpha=0.18, zorder=0,
+        solid_capstyle="butt")
+# the vehicles are drawn, not lettered: at this scale a label inside a 170 m
+# box overflows it, and the caption below already says what they are
+for dx in (-430, -150, 150, 430):
+    ax.add_patch(plt.Rectangle((dx - 85, -52), 170, 104, facecolor=INK,
+                               ec="#fcfcfb", lw=2, zorder=5))
+ax.annotate("4-UGV convoy, ~0.5 t each → ~2 t per sortie",
+            xy=(0, -52), xytext=(0, -14), textcoords="offset points",
+            ha="center", va="top", fontsize=9.5, color=INK, fontweight="bold")
+ax.annotate("direction of travel →", xy=(1300, 0), xytext=(0, 12),
+            textcoords="offset points", fontsize=8.5, color=INK2, ha="left")
+
+esc = [(-620, 520, "A"), (-230, 660, "D"), (210, 690, "C"), (620, 530, "A"),
+       (780, 170, "B"), (-780, 150, "B"), (-430, -560, "A"), (90, -660, "C"),
+       (560, -530, "D"), (-70, 760, "A")]
+for i, (x, y, _) in enumerate(esc):
+    ax.plot([x, 0], [y, 0], color=YEL, lw=0.9, alpha=0.55, zorder=1)
+    nx, ny, _ = esc[(i + 1) % len(esc)]
+    ax.plot([x, nx], [y, ny], color=YEL, lw=0.9, alpha=0.45, zorder=1)
+for x, y, cls in esc:
+    ax.plot([x], [y], marker="o", ms=17, color=AQUA, mec="#fcfcfb", mew=2,
+            zorder=6)
+    ax.text(x, y, cls, ha="center", va="center", fontsize=8.6,
+            fontweight="bold", color="#0b3d2b", zorder=7)
+# notes live in the corners, clear of the swarm and of each other
+ax.text(-2230, 1430, "8–12 active escorts aloft\n+ 5 in reserve on the UGVs",
+        fontsize=9.5, color="#0b6b4a", fontweight="bold", ha="left", va="top",
+        linespacing=1.4)
+ax.text(-2230, -1480, "LoRa mesh — cue + track handoff only,\na few bytes.\n"
+        "No video backhaul; it cannot carry one.",
+        fontsize=9, color="#8a6b00", fontweight="bold", ha="left",
+        va="bottom", linespacing=1.4)
+
+for (tx, ty, va, lab) in (
+        (-1560, 1030, "bottom", "radio FPV\n(RF scanner sees it first)"),
+        (1560, 1030, "bottom", "fiber-optic FPV\n(RF-SILENT → mmWave radar)"),
+        (1560, -1030, "top", "loitering munition\n(acoustic + radar)")):
+    ax.annotate("", xy=(tx * 0.33, ty * 0.33), xytext=(tx, ty),
+                arrowprops=dict(arrowstyle="-|>", lw=2.2, color=RED,
+                                shrinkA=0, shrinkB=4))
+    ax.annotate(lab, xy=(tx, ty), xytext=(0, 10 if va == "bottom" else -10),
+                textcoords="offset points", fontsize=9, color=RED,
+                fontweight="bold", ha="center", va=va, linespacing=1.4)
+
+ax.annotate("on-UGV sensors:\nacoustic array\n77 GHz mmWave radar\n"
+            "passive RF scanner",
+            xy=(-430, -60), xytext=(-2230, -560), fontsize=9, color=BLUE,
+            fontweight="bold", ha="left", va="center", linespacing=1.4,
+            arrowprops=dict(arrowstyle="-", lw=1.2, color=BLUE, alpha=0.6))
+
+ax.set_xlim(-2250, 2250)
+ax.set_ylim(-1520, 1560)
+ax.set_aspect("equal")
+ax.set_title("LICTOR MESH — one protected convoy node (metres, plan view)",
+             color=INK, fontsize=12.5, fontweight="bold", loc="left")
+ax.set_xticks([])
+ax.set_yticks([])
+for sp in ax.spines.values():
+    sp.set_visible(False)
+fig.tight_layout()
+st.pyplot(fig)
+plt.close(fig)
+
+# ---- class table ----
+st.subheader("Four-class escort swarm")
+st.caption(
+    "An earlier draft of this disclosure said *three-class* while listing "
+    "four. The disclosed combination is **four classes (A–D)** — the EW/decoy "
+    "class D is part of the claim."
+)
+st.markdown(
+    """
+| Class | Role | Mass | Effector | Primary target |
+|---|---|---|---|---|
+| **A** | Kinetic ram interceptor | ~1.0 kg | Airframe / frangible nose | Radio-controlled FPV on terminal run |
+| **B** | Net-caster | ~2.0 kg | Deployable rotor-tangling net | Loitering munitions, larger multirotors |
+| **C** | **Wire-cutter** | ~1.5 kg | Trailing cutter line / serrated boom | **Fiber-optic tether — no Western counter exists** |
+| **D** | EW / decoy | ~3.0 kg | Video-link jam + false-target emitter | The FPV operator's video feed, during the engagement window |
+
+**Loadout:** 8–12 active escorts plus 5 in reserve per protected node, mixed by
+threat — FPV-heavy sectors weight A and D, fiber-heavy sectors weight C.
+
+| Sensor (on the UGV) | Detects | Why it is needed |
+|---|---|---|
+| Acoustic mic array | Rotor signature, 300–500 m | Works against RF-silent threats; cheap; all-aspect |
+| mmWave radar, 77 GHz class | Small-RCS (~0.01 m²) airframes | **The fiber-optic answer** — these emit nothing to scan for |
+| Passive RF scanner | Control and video links | Longest warning against conventional FPV; free bearing |
+
+**Mesh.**  LoRa between UGV and escorts, carrying **cue and track handoff
+only** — bearing, range, class, commit flag.  A few bytes per message.  It is
+explicitly *not* a video or radar-return backhaul; at LoRa's bandwidth it could
+not be.  Terminal guidance is on-board each escort.  That is what makes the
+mesh survivable: losing the UGV's radio does not disarm escorts already
+committed.
+    """
+)
+
+st.subheader("Engagement timeline — the corrected version")
+st.warning(
+    "**Detection must happen at 800 m – 1.2 km, not 400–800 m.**  "
+    "detect ~1 s + classify/commit ~1 s + launch ~1 s + fly-out 6–10 s "
+    "(a 1 kg interceptor does 40–70 m/s, so 400–800 m takes 6–10 s) = "
+    "**9–13 s total**.  An FPV closing at 33 m/s covers 300–430 m in that "
+    "window.  So 400–800 m is the *intercept* envelope; the *detection* "
+    "requirement is roughly double it, and a 3-second response is "
+    "detect-to-launch latency, not time-to-intercept.  This is the hardest "
+    "requirement in the system and the one most likely to decide whether it "
+    "works at all."
+)
+
+st.subheader("Cost build-up and ROI")
+st.markdown(
+    """
+| Item | Low | High |
+|---|---|---|
+| 13–17 escort drones @ $5–15k | $65,000 | $255,000 |
+| Acoustic array + mmWave radar + RF scanner | $40,000 | $90,000 |
+| Fusion compute + LoRa mesh + launch rails | $15,000 | $40,000 |
+| **Per protected convoy node** | **$120,000** | **$385,000** |
+
+A 4-UGV convoy with Lictor Mesh: **$0.84M – $1.54M** capex.
+    """
+)
+st.error(
+    "**The ROI claim has to change.**  An earlier draft said ~$3–5M of "
+    "supplies per sortie and positive ROI by trip three.  That does not "
+    "survive arithmetic: four UGVs at ~0.5 t each carry ~2 t, and 2 t of "
+    "mixed ammunition, fuel and rations is worth roughly **$40k–200k** — not "
+    "$3–5M.  Cargo replacement value cannot justify this system, and a "
+    "reviewer will go straight at that number."
+)
+st.markdown(
+    """
+**The defensible case is attrition and casualties**, over 10 sorties through a
+15-km grey zone:
+
+| | Crewed 4 t truck | Lictor-escorted UGVs |
+|---|---|---|
+| Per-trip delivery survival | ~55% | ~88% |
+| Vehicles lost / 10 sorties | ~4.5 × $150k = **$675k** | ~1.2 × $200k = **$240k** |
+| Crew casualties / 10 sorties | **~9** | **0** |
+| Delivery variance (CV) | ~0.45 | ~0.18 |
+
+It pays for itself in **vehicles not lost, crews not killed, and delivery you
+can plan around** — not in cargo value.  A real case, just a different one.
+    """
+)
+
+st.subheader("What it does NOT do")
+st.info(
+    "The simulation on the **🚚 Last-Mile Sim** page tested this concept under "
+    "Theory of Constraints, and the honest result is that Lictor Mesh is "
+    "**necessary but not sufficient**:\n\n"
+    "- **It does not extend the 90-km envelope.**  That envelope is a "
+    "*throughput* limit on the railhead-to-depot haul; the grey zone is a "
+    "*survivability* limit on the final leg.  Different constraints.  Fixing "
+    "the second does not move the first.\n"
+    "- **It does not neutralize the grey zone.**  Russian FPV still owns that "
+    "airspace.  The honest claim is that it makes the grey zone *survivable "
+    "for logistics* — a smaller and achievable claim.\n"
+    "- **The last mile is not currently the binding constraint on any axis.**  "
+    "At Vivaldi's peak (77 km) it was worth 1.04×.  Across all fronts, zero.\n"
+    "- **The advantage is time-boxed.**  Russia fields logistics UGVs and "
+    "fiber FPV already and could counter an escort swarm in roughly 6–12 "
+    "months."
+)
+st.caption(
+    "Full disclosure text, prior-art statement and CC0 dedication: "
+    "`concepts/lictor-mesh.md` · constraint analysis: **🚚 Last-Mile Sim** "
+    "page and `drone_app/lastmile_sim.py`"
+)
+
+
 st.caption("Sources: ISW, Deep State, UA MoD, CRS reporting, RUSI "
            "Watling · bounded-arithmetic method · "
            f"generated {date.today().isoformat()}")

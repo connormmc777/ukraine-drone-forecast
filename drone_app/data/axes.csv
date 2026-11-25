@@ -1,0 +1,7 @@
+axis,ua_railhead,rail_capacity,front_dist_km,ru_railhead,ru_railhead_km,ru_rail_capacity,strategic_value,width_km,botzkrieg_ready,notes
+Dobropillia-Pokrovsk (Vivaldi),Pavlohrad,high,95,Volnovakha,158.5,high,"RU Donetsk-axis railhead; feeds Pokrovsk Wedge",13.4,proven,"The calibration axis. Ops currently at 95 km from Pavlohrad."
+Kostiantynivka-Horlivka,Kramatorsk,med,28.7,Horlivka,56.8,high,"RU hub held since 2014; feeds Toretsk axis",12.0,partial,"Shortest rail-to-rail gap on the whole front, but UA railhead is med-capacity and under artillery fire."
+Lyman-Starobilsk,Sloviansk,med,20.0,Horlivka,66.6,high,"Northern Donbas rail",12.0,partial,"UA railhead under fire; Lyman Push pressing it."
+Kupyansk-Starobilsk,Kharkiv,high,117.1,Starobilsk,207.0,med,"Luhansk northern feed",15.0,partial,"High-capacity UA railhead but RU rail is 207 km away - geometrically out of reach."
+Orikhiv-Melitopol,Zaporizhzhia,high,59.0,Melitopol,112.8,high,"LAND BRIDGE HINGE - severs Crimea-Donbas rail",18.0,none,"No current UA offensive posture here. Geometrically the single decisive axis."
+Sumy-Kursk,Sumy,med,47.6,Starobilsk,343.4,med,"No RU railhead in reach",12.0,partial,"Kursk residual. No rail payoff available."
